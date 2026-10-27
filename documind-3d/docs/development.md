@@ -11,3 +11,12 @@
 - API: cd apps/api && npm run dev (port 4000)
 - Web: cd apps/web && npm run dev (port 5173)
 - Web build: cd apps/web && npm run build
+## Quality checks
+- Root: npm run check  (API lint + typecheck + tests, web lint + build)
+- API: cd apps/api && npm run check
+- Web: cd apps/web && npm run check
+
+## Environment configuration
+- API: apps/api/.env (see root .env.example): NODE_ENV, PORT, CORS_ORIGIN
+- Web: apps/web/.env (see apps/web/.env.example): VITE_API_BASE_URL
+- Real .env files kabhi commit nahi hoti

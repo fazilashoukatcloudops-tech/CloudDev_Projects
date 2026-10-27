@@ -1,23 +1,42 @@
-import { Router } from 'express'
+﻿import { Router } from 'express'
 import { getHealth } from '../controllers/health.controller'
 import { notImplemented } from '../controllers/notImplemented'
-import { validateBody } from '../validation'
-import { loginSchema, questionSchema, registerSchema } from '../validation'
+import {
+  idParamSchema,
+  listQuerySchema,
+  loginSchema,
+  questionSchema,
+  registerSchema,
+  validateBody,
+  validateParams,
+  validateQuery,
+} from '../validation'
 
 export const apiRouter = Router()
 
-// ==================== HEALTH (Day 1) ====================
+// ==================== HEALTH ====================
 apiRouter.get('/health', getHealth)
 
-// ==================== AUTH (Day 6 par implement hoga) ====================
+// ==================== AUTH (Day 6) ====================
 apiRouter.post('/auth/register', validateBody(registerSchema), notImplemented)
 apiRouter.post('/auth/login', validateBody(loginSchema), notImplemented)
 
-// ==================== DOCUMENTS (Day 7+ par implement hoga) ====================
-// Day 6 se: har route par authentication middleware lagega (Day 7+ real implementation)
-apiRouter.get('/documents', notImplemented)
+// ==================== DOCUMENTS (Day 7+) ====================
+// Day 6 se: har route par authentication middleware lagega.
+// Contract ke liye docs/api-contract.md dekho.
+
+apiRouter.get('/documents', validateQuery(listQuerySchema), notImplemented)
 apiRouter.post('/documents', notImplemented)
-apiRouter.get('/documents/:id', notImplemented)
-apiRouter.get('/documents/:id/status', notImplemented)
-apiRouter.post('/documents/:id/questions', validateBody(questionSchema), notImplemented)
-apiRouter.delete('/documents/:id', notImplemented)
+
+// "/summary" ko "/:id" se PEHLE rakhna zaroori hai, warna "summary" id samjha jayega.
+apiRouter.get('/documents/summary', notImplemented)
+
+apiRouter.get('/documents/:id', validateParams(idParamSchema), notImplemented)
+apiRouter.get('/documents/:id/status', validateParams(idParamSchema), notImplemented)
+apiRouter.post(
+  '/documents/:id/questions',
+  validateParams(idParamSchema),
+  validateBody(questionSchema),
+  notImplemented,
+)
+apiRouter.delete('/documents/:id', validateParams(idParamSchema), notImplemented)

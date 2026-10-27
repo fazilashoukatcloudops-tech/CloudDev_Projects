@@ -1,32 +1,87 @@
-import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+﻿import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { FileText, Plus, Search } from 'lucide-react'
 import { DashboardLayout } from '../components/layout'
-import { DocumentCard, UploadModal } from '../components/dashboard'
-import { Alert, Button, Card, EmptyState, buttonClasses } from '../components/ui'
-import { useMockDocuments } from '../hooks/useMockDocuments'
+import {
+  DocumentCard,
+  DocumentDetailsModal,
+  DocumentFilters,
+  DocumentRow,
+  Pagination,
+  UploadModal,
+  type StatusFilter,
+  type ViewMode,
+} from '../components/dashboard'
+import { Alert, Button, Card, EmptyState } from '../components/ui'
+import { useToast } from '../components/toast'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import { useDocuments } from '../hooks/useDocuments'
+import { createMockDocument, deleteMockDocument } from '../services/mockDocumentsApi'
+import type { DocumentSort } from '../types/api'
 import type { DocumentItem } from '../types/document'
+import { formatBytes } from '../utils/format'
 
-// ==================== DASHBOARD PAGE ====================
+const PAGE_SIZE = 6
+
 export function DashboardPage() {
-  // Test ke liye: /dashboard?state=empty  ya  /dashboard?state=error
+  // Test: /dashboard?state=empty  ya  /dashboard?state=error
   const [params] = useSearchParams()
-  const { state, retry } = useMockDocuments(params.get('state'))
-  const [query, setQuery] = useState('')
+  const scenario = params.get('state')
+  const { notify } = useToast()
+
+  const [searchInput, setSearchInput] = useState('')
+  const q = useDebouncedValue(searchInput.trim(), 300)
+  const [status, setStatus] = useState<StatusFilter>('all')
+  const [sort, setSort] = useState<DocumentSort>('newest')
+  const [view, setView] = useState<ViewMode>('grid')
+  const [page, setPage] = useState(1)
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const documents: DocumentItem[] = state.status === 'success' ? state.documents : []
-  const filtered = documents.filter((d) => d.name.toLowerCase().includes(query.trim().toLowerCase()))
-
-  const stats = [
-    { label: 'Total', value: documents.length },
-    { label: 'Ready', value: documents.filter((d) => d.status === 'ready').length },
+  const { state, reload, retry } = useDocuments(
     {
-      label: 'In progress',
-      value: documents.filter((d) => d.status === 'queued' || d.status === 'processing').length,
+      page,
+      pageSize: PAGE_SIZE,
+      status: status === 'all' ? undefined : status,
+      q: q || undefined,
+      sort,
     },
-    { label: 'Failed', value: documents.filter((d) => d.status === 'failed').length },
-  ]
+    scenario,
+  )
+
+  const filtersActive = q !== '' || status !== 'all'
+  const selected =
+    state.status === 'success' ? (state.list.data.find((d) => d.id === selectedId) ?? null) : null
+
+  const handleUploaded = async (file: File) => {
+    await createMockDocument(file)
+    setSearchInput('')
+    setStatus('all')
+    setSort('newest')
+    setPage(1)
+    reload()
+    notify(`${file.name} upload ho gayi. Processing shuru.`, 'success')
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteMockDocument(id)
+      setSelectedId(null)
+      if (state.status === 'success' && state.list.data.length === 1 && page > 1) {
+        setPage(page - 1)
+      }
+      reload()
+      notify('Document delete ho gaya.', 'success')
+    } catch {
+      notify('Delete nahi ho saka. Dobara try karo.', 'error')
+    }
+  }
+
+  const clearFilters = () => {
+    setSearchInput('')
+    setStatus('all')
+    setPage(1)
+  }
 
   const uploadButton = (
     <Button onClick={() => setUploadOpen(true)}>
@@ -35,72 +90,125 @@ export function DashboardPage() {
     </Button>
   )
 
+  const renderItem = (doc: DocumentItem) =>
+    view === 'grid' ? (
+      <DocumentCard key={doc.id} doc={doc} onSelect={(d) => setSelectedId(d.id)} />
+    ) : (
+      <DocumentRow key={doc.id} doc={doc} onSelect={(d) => setSelectedId(d.id)} />
+    )
+
   return (
     <DashboardLayout title="My Documents" actions={uploadButton}>
-      {state.status === 'loading' && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
-          {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-xl bg-slate-800/60" />
-          ))}
-        </div>
-      )}
-
-      {state.status === 'error' && (
-        <div className="max-w-xl space-y-3">
-          <Alert variant="error">{state.message}</Alert>
-          <Button variant="secondary" onClick={retry}>
-            Dobara try karo
-          </Button>
-        </div>
-      )}
-
-      {state.status === 'success' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {stats.map((s) => (
+      <div className="space-y-6">
+        {state.status === 'success' && (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            {[
+              { label: 'Total', value: state.summary.total },
+              { label: 'Ready', value: state.summary.byStatus.ready },
+              {
+                label: 'In progress',
+                value: state.summary.byStatus.queued + state.summary.byStatus.processing,
+              },
+              { label: 'Failed', value: state.summary.byStatus.failed },
+              { label: 'Storage', value: formatBytes(state.summary.storageBytes) },
+            ].map((s) => (
               <Card key={s.label}>
                 <p className="text-xs text-slate-400">{s.label}</p>
                 <p className="mt-1 text-2xl font-bold">{s.value}</p>
               </Card>
             ))}
           </div>
+        )}
 
-          <div className="relative max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-            <input
-              type="search"
-              aria-label="Search documents"
-              placeholder="Documents search karo..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-900 py-2 pl-9 pr-3 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            />
+        <DocumentFilters
+          search={searchInput}
+          onSearch={(v) => {
+            setSearchInput(v)
+            setPage(1)
+          }}
+          status={status}
+          onStatus={(v) => {
+            setStatus(v)
+            setPage(1)
+          }}
+          sort={sort}
+          onSort={(v) => {
+            setSort(v)
+            setPage(1)
+          }}
+          view={view}
+          onView={setView}
+        />
+
+        {state.status === 'loading' && (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
+            {Array.from({ length: PAGE_SIZE }, (_, i) => (
+              <div key={i} className="h-28 animate-pulse rounded-xl bg-slate-800/60" />
+            ))}
           </div>
+        )}
 
-          {documents.length === 0 ? (
-            <EmptyState
-              icon={<FileText className="h-10 w-10" />}
-              title="Abhi koi document nahi"
-              description="Apna pehla PDF upload karo, phir AI se uske baare mein sawal poochho."
-              action={uploadButton}
-            />
-          ) : filtered.length === 0 ? (
-            <EmptyState
-              icon={<Search className="h-10 w-10" />}
-              title="Koi match nahi mila"
-              description={`"${query}" se match karne wala koi document nahi.`}
-            />
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((doc) => (
-                <DocumentCard key={doc.id} doc={doc} />
-              ))}
-            </div>
-          )}
-        </div>
+        {state.status === 'error' && (
+          <div className="max-w-xl space-y-3">
+            <Alert variant="error">{state.message}</Alert>
+            <Button variant="secondary" onClick={retry}>
+              Dobara try karo
+            </Button>
+          </div>
+        )}
+
+        {state.status === 'success' && (
+          <div className={`space-y-6 transition-opacity ${state.stale ? 'opacity-60' : ''}`}>
+            {state.summary.total === 0 ? (
+              <EmptyState
+                icon={<FileText className="h-10 w-10" />}
+                title="Abhi koi document nahi"
+                description="Apna pehla PDF upload karo, phir AI se uske baare mein sawal poochho."
+                action={uploadButton}
+              />
+            ) : state.list.data.length === 0 ? (
+              <EmptyState
+                icon={<Search className="h-10 w-10" />}
+                title="Koi match nahi mila"
+                description={
+                  filtersActive
+                    ? 'In filters se koi document match nahi karta.'
+                    : 'Is page par koi document nahi.'
+                }
+                action={
+                  filtersActive ? (
+                    <Button variant="secondary" onClick={clearFilters}>
+                      Filters clear karo
+                    </Button>
+                  ) : undefined
+                }
+              />
+            ) : (
+              <>
+                <div
+                  className={
+                    view === 'grid' ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-2'
+                  }
+                >
+                  {state.list.data.map(renderItem)}
+                </div>
+                <Pagination meta={state.list.meta} onPage={setPage} />
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {uploadOpen && (
+        <UploadModal onClose={() => setUploadOpen(false)} onUploaded={handleUploaded} />
       )}
-
-      {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} />}
+      {selected && (
+        <DocumentDetailsModal
+          doc={selected}
+          onClose={() => setSelectedId(null)}
+          onDelete={handleDelete}
+        />
+      )}
     </DashboardLayout>
   )
 }
@@ -111,9 +219,12 @@ export function NotFoundPage() {
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 text-slate-100">
       <h1 className="text-6xl font-bold text-indigo-400">404</h1>
       <p className="text-slate-400">Yeh page maujood nahi hai.</p>
-      <Link to="/" className={buttonClasses('primary')}>
+      <a
+        href="/"
+        className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400"
+      >
         Home par wapas jao
-      </Link>
+      </a>
     </main>
   )
 }

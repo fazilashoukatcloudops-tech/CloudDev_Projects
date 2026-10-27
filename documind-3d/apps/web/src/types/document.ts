@@ -6,5 +6,7 @@ export type DocumentItem = {
   sizeBytes: number
   pages: number | null
   status: DocumentStatus
+  errorMessage: string | null
   uploadedAt: string
+  updatedAt: string
 }

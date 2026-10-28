@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+﻿import { useState, type ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { Menu, X, Box, FileText, LogOut, Settings } from 'lucide-react'
 import { Logo, buttonClasses } from './ui'
@@ -78,6 +78,11 @@ export function Footer() {
 }
 
 // ==================== SIDEBAR ====================
+const navClass = ({ isActive }: { isActive: boolean }) =>
+  `flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
+    isActive ? 'bg-indigo-500/15 text-indigo-200' : 'text-slate-300 hover:bg-slate-800'
+  }`
+
 function Disabled({ icon, label, hint }: { icon: ReactNode; label: string; hint: string }) {
   return (
     <div className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-500">
@@ -105,20 +110,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </Link>
 
         <nav className="flex flex-1 flex-col gap-1">
-          <NavLink
-            to="/dashboard"
-            end
-            onClick={onClose}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
-                isActive ? 'bg-indigo-500/15 text-indigo-200' : 'text-slate-300 hover:bg-slate-800'
-              }`
-            }
-          >
+          <NavLink to="/dashboard" end onClick={onClose} className={navClass}>
             <FileText className="h-4 w-4" />
             Documents
           </NavLink>
-          <Disabled icon={<Box className="h-4 w-4" />} label="3D Explorer" hint="Day 5" />
+          <NavLink to="/explorer" onClick={onClose} className={navClass}>
+            <Box className="h-4 w-4" />
+            3D Explorer
+          </NavLink>
           <Disabled icon={<Settings className="h-4 w-4" />} label="Settings" hint="Soon" />
         </nav>
 

@@ -28,8 +28,9 @@ apiRouter.post('/auth/login', validateBody(loginSchema), notImplemented)
 apiRouter.get('/documents', validateQuery(listQuerySchema), notImplemented)
 apiRouter.post('/documents', notImplemented)
 
-// "/summary" ko "/:id" se PEHLE rakhna zaroori hai, warna "summary" id samjha jayega.
+// "/summary" aur "/graph" ko "/:id" se PEHLE rakhna zaroori hai, warna inhe id samjha jayega.
 apiRouter.get('/documents/summary', notImplemented)
+apiRouter.get('/documents/graph', notImplemented)
 
 apiRouter.get('/documents/:id', validateParams(idParamSchema), notImplemented)
 apiRouter.get('/documents/:id/status', validateParams(idParamSchema), notImplemented)

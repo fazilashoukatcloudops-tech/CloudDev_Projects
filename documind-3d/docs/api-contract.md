@@ -48,3 +48,15 @@ Body: { "question": "3-1000 chars" }
 - Sort stable honi chahiye: sort field ke baad id par tie-break.
 - Prisma: skip = (page - 1) * pageSize, take = pageSize, count alag query se.
 - Page range se bahar jaye to 200 aur khali data (error nahi).
+
+## GET /documents/graph                         (planned, Day 11+)
+3D explorer ke liye nodes aur similarity edges.
+200: { "data": { "nodes": DocumentDto[], "edges": [ { "source": "uuid", "target": "uuid", "weight": 0..1 } ] } }
+- Sirf logged-in user ke documents; edges sirf "ready" documents ke beech (embeddings se).
+- Edge ke dono ends nodes mein maujood hon aur source != target.
+- Jab tak yeh endpoint nahi, frontend placeholder edges (nearest neighbours) khud banata hai.
+- Schemas: apps/api/src/schemas/documentResponse.schema.ts (tests fixtures se verify hote hain).
+
+## Business rules (DocumentDto)
+- status = ready -> pages null nahi ho sakta
+- status = failed -> errorMessage zaroori; baqi statuses mein errorMessage null

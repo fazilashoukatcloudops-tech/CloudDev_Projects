@@ -15,7 +15,8 @@ import {
   Search,
   Upload,
 } from 'lucide-react'
-import { Alert, Button, Modal, StatusBadge } from './ui'
+import { Link } from 'react-router-dom'
+import { Alert, Button, Modal, StatusBadge, buttonClasses } from './ui'
 import { MAX_UPLOAD_MB } from '../constants'
 import { formatBytes, formatDate } from '../utils/format'
 import { validateFile } from '../utils/validation'
@@ -251,9 +252,7 @@ export function DocumentDetailsModal({
           <Button variant="secondary" disabled title="Day 11 par available hoga">
             Ask AI
           </Button>
-          <Button variant="secondary" disabled title="Day 5 par available hoga">
-            Open in 3D
-          </Button>
+          <Link to={`/explorer?doc=${doc.id}`} className={buttonClasses('secondary')}>Open in 3D</Link>
         </div>
 
         <div className="flex items-center justify-between border-t border-slate-800 pt-4">

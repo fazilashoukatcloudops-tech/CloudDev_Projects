@@ -1,6 +1,4 @@
 ﻿import { describe, expect, it } from 'vitest'
-import request from 'supertest'
-import { app } from '../app'
 import { buildPaginationMeta } from '../lib/pagination'
 import {
   documentDtoSchema,
@@ -9,6 +7,7 @@ import {
   summaryResponseSchema,
 } from '../schemas/documentResponse.schema'
 import { MOCK_DOCUMENTS } from './fixtures/documents'
+import { authedAgent } from './helpers'
 
 describe('mock documents follow the response contract', () => {
   it('every mock document is a valid DocumentDto', () => {
@@ -83,7 +82,8 @@ describe('graph response', () => {
 
 describe('GET /api/v1/documents/graph', () => {
   it('is planned (501) and not treated as an id', async () => {
-    const res = await request(app).get('/api/v1/documents/graph')
+    const agent = await authedAgent()
+    const res = await agent.get('/api/v1/documents/graph')
     expect(res.status).toBe(501)
   })
 })

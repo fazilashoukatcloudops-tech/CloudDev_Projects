@@ -60,3 +60,18 @@ Body: { "question": "3-1000 chars" }
 ## Business rules (DocumentDto)
 - status = ready -> pages null nahi ho sakta
 - status = failed -> errorMessage zaroori; baqi statuses mein errorMessage null
+
+## Auth endpoints (Day 6)
+Responses {"user": {...}} shape mein hain (documents ki {data, meta} se alag).
+
+POST /auth/register   body { name 2-80, email, password 8-72 }
+  201 { "user": { id, name, email } } + Set-Cookie documind_session
+  400 VALIDATION_ERROR, 409 EMAIL_TAKEN
+POST /auth/login      body { email, password }
+  200 { "user": {...} } + Set-Cookie
+  401 INVALID_CREDENTIALS (email ya password galat, same message)
+POST /auth/logout     204, cookie clear (login zaroori nahi)
+GET  /auth/me         200 { "user": {...} }, 401 UNAUTHORIZED
+
+Saare /documents endpoints: login ke bagair 401 UNAUTHORIZED.
+Browser se POST/DELETE par Origin CORS_ORIGIN ke barabar hona chahiye, warna 403 FORBIDDEN_ORIGIN.

@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
+﻿const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
 export class ApiError extends Error {
   status: number
@@ -12,6 +12,11 @@ export class ApiError extends Error {
     this.code = code
     this.details = details
   }
+}
+
+let unauthorizedHandler: (() => void) | null = null
+export function setUnauthorizedHandler(fn: (() => void) | null) {
+  unauthorizedHandler = fn
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -29,6 +34,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const body = await res.json().catch(() => null)
 
   if (!res.ok) {
+    if (res.status === 401 && !path.startsWith('/auth/')) unauthorizedHandler?.()
     const e = body?.error
     throw new ApiError(
       res.status,
@@ -56,3 +62,7 @@ export const login = (input: { email: string; password: string }) =>
 
 export const register = (input: { name: string; email: string; password: string }) =>
   request<AuthResponse>('/auth/register', { method: 'POST', body: JSON.stringify(input) })
+
+export const logout = () => request<void>('/auth/logout', { method: 'POST' })
+
+export const getMe = () => request<AuthResponse>('/auth/me')

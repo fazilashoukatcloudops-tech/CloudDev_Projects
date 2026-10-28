@@ -1,12 +1,13 @@
 ﻿import { Router } from 'express'
 import { getHealth } from '../controllers/health.controller'
+import { login, logout, me, register } from '../controllers/auth.controller'
 import { notImplemented } from '../controllers/notImplemented'
+import { requireAuth } from '../middleware/auth'
+import { loginSchema, registerSchema } from '../schemas/auth.schema'
 import {
   idParamSchema,
   listQuerySchema,
-  loginSchema,
   questionSchema,
-  registerSchema,
   validateBody,
   validateParams,
   validateQuery,
@@ -17,27 +18,35 @@ export const apiRouter = Router()
 // ==================== HEALTH ====================
 apiRouter.get('/health', getHealth)
 
-// ==================== AUTH (Day 6) ====================
-apiRouter.post('/auth/register', validateBody(registerSchema), notImplemented)
-apiRouter.post('/auth/login', validateBody(loginSchema), notImplemented)
+// ==================== AUTH ====================
+const authRouter = Router()
+authRouter.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store')
+  next()
+})
+authRouter.post('/register', validateBody(registerSchema), register)
+authRouter.post('/login', validateBody(loginSchema), login)
+authRouter.post('/logout', logout)
+authRouter.get('/me', requireAuth, me)
+apiRouter.use('/auth', authRouter)
 
-// ==================== DOCUMENTS (Day 7+) ====================
-// Day 6 se: har route par authentication middleware lagega.
-// Contract ke liye docs/api-contract.md dekho.
+// ==================== DOCUMENTS (protected) ====================
+// Har documents route login mangta hai (requireAuth validation se pehle chalta hai)
+const documentsRouter = Router()
+documentsRouter.use(requireAuth)
 
-apiRouter.get('/documents', validateQuery(listQuerySchema), notImplemented)
-apiRouter.post('/documents', notImplemented)
-
-// "/summary" aur "/graph" ko "/:id" se PEHLE rakhna zaroori hai, warna inhe id samjha jayega.
-apiRouter.get('/documents/summary', notImplemented)
-apiRouter.get('/documents/graph', notImplemented)
-
-apiRouter.get('/documents/:id', validateParams(idParamSchema), notImplemented)
-apiRouter.get('/documents/:id/status', validateParams(idParamSchema), notImplemented)
-apiRouter.post(
-  '/documents/:id/questions',
+documentsRouter.get('/', validateQuery(listQuerySchema), notImplemented)
+documentsRouter.post('/', notImplemented)
+documentsRouter.get('/summary', notImplemented)
+documentsRouter.get('/graph', notImplemented)
+documentsRouter.get('/:id', validateParams(idParamSchema), notImplemented)
+documentsRouter.get('/:id/status', validateParams(idParamSchema), notImplemented)
+documentsRouter.post(
+  '/:id/questions',
   validateParams(idParamSchema),
   validateBody(questionSchema),
   notImplemented,
 )
-apiRouter.delete('/documents/:id', validateParams(idParamSchema), notImplemented)
+documentsRouter.delete('/:id', validateParams(idParamSchema), notImplemented)
+
+apiRouter.use('/documents', documentsRouter)

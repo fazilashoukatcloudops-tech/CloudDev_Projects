@@ -1,7 +1,9 @@
 ﻿import { useState, type ReactNode } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { Menu, X, Box, FileText, LogOut, Settings } from 'lucide-react'
 import { Logo, buttonClasses } from './ui'
+import { useAuth } from '../hooks/useAuth'
+import { useToast } from './toast'
 
 // ==================== NAVBAR ====================
 const navLinks = [
@@ -11,6 +13,39 @@ const navLinks = [
 
 export function Navbar() {
   const [open, setOpen] = useState(false)
+  const { status } = useAuth()
+  const authed = status === 'authenticated'
+  const showActions = status !== 'loading'
+
+  const desktopActions = authed ? (
+    <Link to="/dashboard" className={buttonClasses('primary')}>
+      Dashboard
+    </Link>
+  ) : (
+    <>
+      <Link to="/login" className={buttonClasses('ghost')}>
+        Login
+      </Link>
+      <Link to="/register" className={buttonClasses('primary')}>
+        Get started
+      </Link>
+    </>
+  )
+
+  const mobileActions = authed ? (
+    <Link to="/dashboard" className={buttonClasses('primary')}>
+      Dashboard
+    </Link>
+  ) : (
+    <>
+      <Link to="/login" className={buttonClasses('secondary')}>
+        Login
+      </Link>
+      <Link to="/register" className={buttonClasses('primary')}>
+        Get started
+      </Link>
+    </>
+  )
 
   return (
     <nav className="fixed inset-x-0 top-0 z-40 border-b border-slate-800/80 bg-slate-950/70 backdrop-blur">
@@ -23,12 +58,7 @@ export function Navbar() {
               {l.label}
             </a>
           ))}
-          <Link to="/login" className={buttonClasses('ghost')}>
-            Login
-          </Link>
-          <Link to="/register" className={buttonClasses('primary')}>
-            Get started
-          </Link>
+          {showActions && desktopActions}
         </div>
 
         <button
@@ -53,12 +83,7 @@ export function Navbar() {
               {l.label}
             </a>
           ))}
-          <Link to="/login" className={buttonClasses('secondary')}>
-            Login
-          </Link>
-          <Link to="/register" className={buttonClasses('primary')}>
-            Get started
-          </Link>
+          {showActions && mobileActions}
         </div>
       )}
     </nav>
@@ -94,6 +119,22 @@ function Disabled({ icon, label, hint }: { icon: ReactNode; label: string; hint:
 }
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user, logout } = useAuth()
+  const { notify } = useToast()
+  const navigate = useNavigate()
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  const onLogout = async () => {
+    setLoggingOut(true)
+    try {
+      await logout()
+      navigate('/', { replace: true })
+    } catch {
+      notify('Logout nahi ho saka. Dobara try karo.', 'error')
+      setLoggingOut(false)
+    }
+  }
+
   return (
     <>
       {open && (
@@ -121,13 +162,26 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <Disabled icon={<Settings className="h-4 w-4" />} label="Settings" hint="Soon" />
         </nav>
 
-        <Link
-          to="/"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-slate-800 hover:text-white"
+        {user && (
+          <div className="mb-2 rounded-lg bg-slate-800/50 px-3 py-2">
+            <p className="truncate text-sm font-medium" title={user.name}>
+              {user.name}
+            </p>
+            <p className="truncate text-xs text-slate-400" title={user.email}>
+              {user.email}
+            </p>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onLogout}
+          disabled={loggingOut}
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-slate-800 hover:text-white disabled:opacity-50"
         >
           <LogOut className="h-4 w-4" />
-          Logout
-        </Link>
+          {loggingOut ? 'Logging out...' : 'Logout'}
+        </button>
       </aside>
     </>
   )

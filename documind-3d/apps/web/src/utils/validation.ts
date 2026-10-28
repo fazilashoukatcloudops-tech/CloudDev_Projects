@@ -1,4 +1,4 @@
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from '../constants'
+﻿import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from '../constants'
 
 export type FieldErrors<K extends string> = Partial<Record<K, string>>
 
@@ -19,8 +19,10 @@ export function validateRegister(v: {
 }) {
   const errors: FieldErrors<'name' | 'email' | 'password' | 'confirmPassword'> = {}
   if (v.name.trim().length < 2) errors.name = 'Naam kam az kam 2 characters ka ho'
+  else if (v.name.trim().length > 80) errors.name = 'Naam 80 characters se chota ho'
   if (!EMAIL_RE.test(v.email.trim())) errors.email = 'Valid email likho'
   if (v.password.length < 8) errors.password = 'Password kam az kam 8 characters ka ho'
+  else if (v.password.length > 72) errors.password = 'Password 72 characters se chota ho'
   if (v.confirmPassword !== v.password) errors.confirmPassword = 'Passwords match nahi karte'
   return errors
 }

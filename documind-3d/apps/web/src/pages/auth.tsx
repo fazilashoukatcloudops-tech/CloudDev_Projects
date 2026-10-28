@@ -1,13 +1,14 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+﻿import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { AuthLayout } from '../components/layout'
 import { Alert, Button, Input } from '../components/ui'
-import { ApiError, login, register } from '../services/api'
+import { ApiError } from '../services/api'
+import { useAuth } from '../hooks/useAuth'
 import { validateLogin, validateRegister, type FieldErrors } from '../utils/validation'
 
 // ==================== LOGIN PAGE ====================
 export function LoginPage() {
-  const navigate = useNavigate()
+  const { login } = useAuth()
   const [form, setForm] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState<FieldErrors<'email' | 'password'>>({})
   const [apiError, setApiError] = useState<string | null>(null)
@@ -23,10 +24,8 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await login(form)
-      navigate('/dashboard')
     } catch (err) {
       setApiError(err instanceof ApiError ? err.message : 'Unexpected error')
-    } finally {
       setSubmitting(false)
     }
   }
@@ -65,13 +64,6 @@ export function LoginPage() {
         <Button type="submit" loading={submitting} className="w-full">
           Login
         </Button>
-        <p className="text-center text-xs text-slate-500">
-          Auth Day 6 par implement hogi. Abhi UI dekhne ke liye{' '}
-          <Link to="/dashboard" className="text-indigo-300 hover:underline">
-            dashboard demo
-          </Link>{' '}
-          kholo.
-        </p>
       </form>
     </AuthLayout>
   )
@@ -81,7 +73,7 @@ export function LoginPage() {
 type RegisterField = 'name' | 'email' | 'password' | 'confirmPassword'
 
 export function RegisterPage() {
-  const navigate = useNavigate()
+  const { register } = useAuth()
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [errors, setErrors] = useState<FieldErrors<RegisterField>>({})
   const [apiError, setApiError] = useState<string | null>(null)
@@ -100,10 +92,8 @@ export function RegisterPage() {
     setSubmitting(true)
     try {
       await register({ name: form.name, email: form.email, password: form.password })
-      navigate('/dashboard')
     } catch (err) {
       setApiError(err instanceof ApiError ? err.message : 'Unexpected error')
-    } finally {
       setSubmitting(false)
     }
   }

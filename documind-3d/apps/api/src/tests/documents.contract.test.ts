@@ -1,13 +1,18 @@
-﻿import { describe, expect, it } from 'vitest'
-import request from 'supertest'
-import { app } from '../app'
+﻿import { beforeAll, describe, expect, it } from 'vitest'
 import { buildPaginationMeta, toSkipTake } from '../lib/pagination'
+import { authedAgent } from './helpers'
 
 const VALID_ID = '3f2b8c1e-9a4d-4e6b-8c7a-1d2e3f4a5b6c'
 
+let agent: Awaited<ReturnType<typeof authedAgent>>
+
+beforeAll(async () => {
+  agent = await authedAgent()
+})
+
 describe('GET /api/v1/documents (query validation)', () => {
   it('accepts a valid query', async () => {
-    const res = await request(app).get(
+    const res = await agent.get(
       '/api/v1/documents?page=2&pageSize=10&status=ready&sort=name&q=report',
     )
     expect(res.status).toBe(501)
@@ -20,7 +25,7 @@ describe('GET /api/v1/documents (query validation)', () => {
     ['status=bogus'],
     ['sort=bogus'],
   ])('rejects invalid query (%s)', async (qs) => {
-    const res = await request(app).get(`/api/v1/documents?${qs}`)
+    const res = await agent.get(`/api/v1/documents?${qs}`)
     expect(res.status).toBe(400)
     expect(res.body.error.code).toBe('VALIDATION_ERROR')
   })
@@ -28,28 +33,28 @@ describe('GET /api/v1/documents (query validation)', () => {
 
 describe('document id validation', () => {
   it('rejects a non-uuid id', async () => {
-    const res = await request(app).get('/api/v1/documents/not-a-uuid')
+    const res = await agent.get('/api/v1/documents/not-a-uuid')
     expect(res.status).toBe(400)
     expect(res.body.error.details).toHaveProperty('id')
   })
 
   it('accepts a uuid id', async () => {
-    const res = await request(app).get(`/api/v1/documents/${VALID_ID}`)
+    const res = await agent.get(`/api/v1/documents/${VALID_ID}`)
     expect(res.status).toBe(501)
   })
 
   it('does not treat "summary" as an id', async () => {
-    const res = await request(app).get('/api/v1/documents/summary')
+    const res = await agent.get('/api/v1/documents/summary')
     expect(res.status).toBe(501)
   })
 
   it('validates id and question body together', async () => {
-    const bad = await request(app)
+    const bad = await agent
       .post(`/api/v1/documents/${VALID_ID}/questions`)
       .send({ question: '' })
     expect(bad.status).toBe(400)
 
-    const ok = await request(app)
+    const ok = await agent
       .post(`/api/v1/documents/${VALID_ID}/questions`)
       .send({ question: 'Is document ka summary kya hai?' })
     expect(ok.status).toBe(501)

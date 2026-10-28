@@ -1,6 +1,7 @@
 ﻿import { describe, expect, it } from 'vitest'
 import request from 'supertest'
 import { app } from '../app'
+import { authedAgent } from './helpers'
 
 describe('GET /api/v1/health', () => {
   it('returns ok', async () => {
@@ -29,7 +30,7 @@ describe('error handling', () => {
   })
 })
 
-describe('auth routes (validation)', () => {
+describe('auth validation', () => {
   it('rejects invalid registration data', async () => {
     const res = await request(app)
       .post('/api/v1/auth/register')
@@ -39,24 +40,18 @@ describe('auth routes (validation)', () => {
     expect(res.body.error.details).toHaveProperty('email')
     expect(res.body.error.details).toHaveProperty('password')
   })
-
-  it('accepts valid data and returns 501 until Day 6', async () => {
-    const res = await request(app)
-      .post('/api/v1/auth/register')
-      .send({ name: 'Ali Khan', email: 'ali@example.com', password: 'StrongPass123' })
-    expect(res.status).toBe(501)
-    expect(res.body.error.code).toBe('NOT_IMPLEMENTED')
-  })
 })
 
 describe('documents routes (planned)', () => {
-  it('GET /documents is planned (501)', async () => {
-    const res = await request(app).get('/api/v1/documents')
+  it('GET /documents is planned (501) for a logged-in user', async () => {
+    const agent = await authedAgent()
+    const res = await agent.get('/api/v1/documents')
     expect(res.status).toBe(501)
   })
 
   it('validates question body', async () => {
-    const res = await request(app).post('/api/v1/documents/abc/questions').send({ question: '' })
+    const agent = await authedAgent()
+    const res = await agent.post('/api/v1/documents/abc/questions').send({ question: '' })
     expect(res.status).toBe(400)
   })
 })

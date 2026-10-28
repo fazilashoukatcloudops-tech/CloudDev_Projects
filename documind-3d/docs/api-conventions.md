@@ -34,3 +34,9 @@ Status codes: 400 validation, 401 unauthenticated, 403 forbidden, 404 not found,
 
 ## Headers
 - Har response mein X-Request-Id; logs mein is ki pehli 8 characters nazar aati hain.
+
+## Extra error codes (Day 6)
+- UNAUTHORIZED (401): session nahi hai ya invalid
+- INVALID_CREDENTIALS (401): login mein email/password galat (same message enumeration se bachne ke liye)
+- EMAIL_TAKEN (409): register mein email already used
+- FORBIDDEN_ORIGIN (403): state-changing request ka Origin allowed nahi

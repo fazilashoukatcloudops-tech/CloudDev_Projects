@@ -20,3 +20,8 @@
 - API: apps/api/.env (see root .env.example): NODE_ENV, PORT, CORS_ORIGIN
 - Web: apps/web/.env (see apps/web/.env.example): VITE_API_BASE_URL
 - Real .env files kabhi commit nahi hoti
+
+## Auth env vars (Day 6)
+- API env (apps/api/.env): NODE_ENV, PORT, CORS_ORIGIN, JWT_SECRET (required, 32+ chars),
+  JWT_EXPIRES_DAYS, COOKIE_SECURE, BCRYPT_ROUNDS
+- Naye developer ka setup: cp .env.example apps/api/.env, phir JWT_SECRET generate karke set karo (docs/secrets.md)

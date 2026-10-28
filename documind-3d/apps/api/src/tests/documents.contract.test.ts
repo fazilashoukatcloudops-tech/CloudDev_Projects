@@ -13,9 +13,9 @@ beforeAll(async () => {
 describe('GET /api/v1/documents (query validation)', () => {
   it('accepts a valid query', async () => {
     const res = await agent.get(
-      '/api/v1/documents?page=2&pageSize=10&status=ready&sort=name&q=report',
+      '/api/v1/documents?page=1&pageSize=10&status=ready&sort=name&q=report',
     )
-    expect(res.status).toBe(501)
+    expect(res.status).toBe(200)
   })
 
   it.each([
@@ -40,12 +40,12 @@ describe('document id validation', () => {
 
   it('accepts a uuid id', async () => {
     const res = await agent.get(`/api/v1/documents/${VALID_ID}`)
-    expect(res.status).toBe(501)
+    expect(res.status).toBe(404)
   })
 
   it('does not treat "summary" as an id', async () => {
     const res = await agent.get('/api/v1/documents/summary')
-    expect(res.status).toBe(501)
+    expect(res.status).toBe(200)
   })
 
   it('validates id and question body together', async () => {

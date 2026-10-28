@@ -64,3 +64,5 @@ export const validateParams =
     res.locals.params = result.data
     next()
   }
+
+export type DocumentSort = (typeof DOCUMENT_SORTS)[number]

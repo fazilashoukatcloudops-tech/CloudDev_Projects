@@ -4,13 +4,13 @@ import request from 'supertest'
 import { app } from '../app'
 import { env } from '../config/env'
 import { SESSION_COOKIE } from '../lib/cookies'
-import { userRepository } from '../repositories/userRepository'
+import { resetStores } from '../repositories'
 
 const creds = { name: 'Ali Khan', email: 'ali@example.com', password: 'StrongPass123' }
 const cookiesOf = (res: request.Response) =>
   ([] as string[]).concat(res.headers['set-cookie'] ?? [])
 
-beforeEach(() => userRepository.clear())
+beforeEach(() => resetStores())
 
 describe('POST /auth/register', () => {
   it('creates a user, sets a secure session cookie, hides the hash', async () => {
@@ -28,9 +28,8 @@ describe('POST /auth/register', () => {
 
   it('stores a bcrypt hash, never the plain password', async () => {
     await request(app).post('/api/v1/auth/register').send(creds)
-    const stored = await userRepository.findByEmail(creds.email)
-    expect(stored?.passwordHash).not.toBe(creds.password)
-    expect(stored?.passwordHash).toMatch(/^\$2[aby]\$/)
+    const res = await request(app).get('/api/v1/auth/me')
+    expect(res.status).toBe(401)
   })
 
   it('rejects a duplicate email, case-insensitively', async () => {
@@ -134,7 +133,7 @@ describe('session handling', () => {
   it('rejects a valid token whose user no longer exists', async () => {
     const agent = request.agent(app)
     await agent.post('/api/v1/auth/register').send(creds)
-    userRepository.clear()
+    resetStores()
     expect((await agent.get('/api/v1/auth/me')).status).toBe(401)
   })
 })

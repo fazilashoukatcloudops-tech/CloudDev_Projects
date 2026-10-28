@@ -1,9 +1,12 @@
-﻿{
+{
   "name": "documind-3d",
   "private": true,
   "scripts": {
     "dev:api": "npm --prefix apps/api run dev",
     "dev:web": "npm --prefix apps/web run dev",
-    "check": "npm --prefix apps/api run check && npm --prefix apps/web run check"
+    "check": "npm --prefix apps/api run check && npm --prefix apps/web run check",
+    "db:up": "docker compose up -d db --wait",
+    "db:down": "docker compose stop db",
+    "db:logs": "docker compose logs -f db"
   }
 }

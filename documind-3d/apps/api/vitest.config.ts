@@ -9,6 +9,9 @@ export default defineConfig({
       JWT_SECRET: 'test-secret-test-secret-test-secret-123456',
       COOKIE_SECURE: 'false',
       BCRYPT_ROUNDS: '4',
+      DATA_STORE: 'memory',
+      STORAGE_DRIVER: 'memory',
+      MAX_UPLOAD_MB: '1',
     },
   },
 })

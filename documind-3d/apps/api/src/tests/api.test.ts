@@ -42,16 +42,12 @@ describe('auth validation', () => {
   })
 })
 
-describe('documents routes (planned)', () => {
-  it('GET /documents is planned (501) for a logged-in user', async () => {
+describe('documents routes (real)', () => {
+  it('GET /documents returns an empty list for a new user', async () => {
     const agent = await authedAgent()
     const res = await agent.get('/api/v1/documents')
-    expect(res.status).toBe(501)
-  })
-
-  it('validates question body', async () => {
-    const agent = await authedAgent()
-    const res = await agent.post('/api/v1/documents/abc/questions').send({ question: '' })
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(200)
+    expect(res.body.data).toEqual([])
+    expect(res.body.meta.total).toBe(0)
   })
 })

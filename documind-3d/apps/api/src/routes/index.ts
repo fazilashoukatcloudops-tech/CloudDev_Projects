@@ -1,8 +1,17 @@
 ﻿import { Router } from 'express'
-import { getHealth } from '../controllers/health.controller'
+import { getHealth, getReadiness } from '../controllers/health.controller'
 import { login, logout, me, register } from '../controllers/auth.controller'
+import {
+  createDocument,
+  deleteDocument,
+  getDocument,
+  getDocumentStatus,
+  getSummary,
+  listDocuments,
+} from '../controllers/documents.controller'
 import { notImplemented } from '../controllers/notImplemented'
 import { requireAuth } from '../middleware/auth'
+import { receivePdf } from '../middleware/upload'
 import { loginSchema, registerSchema } from '../schemas/auth.schema'
 import {
   idParamSchema,
@@ -17,6 +26,7 @@ export const apiRouter = Router()
 
 // ==================== HEALTH ====================
 apiRouter.get('/health', getHealth)
+apiRouter.get('/health/ready', getReadiness)
 
 // ==================== AUTH ====================
 const authRouter = Router()
@@ -31,22 +41,23 @@ authRouter.get('/me', requireAuth, me)
 apiRouter.use('/auth', authRouter)
 
 // ==================== DOCUMENTS (protected) ====================
-// Har documents route login mangta hai (requireAuth validation se pehle chalta hai)
 const documentsRouter = Router()
 documentsRouter.use(requireAuth)
 
-documentsRouter.get('/', validateQuery(listQuerySchema), notImplemented)
-documentsRouter.post('/', notImplemented)
-documentsRouter.get('/summary', notImplemented)
+documentsRouter.get('/', validateQuery(listQuerySchema), listDocuments)
+documentsRouter.post('/', receivePdf, createDocument)
+
+documentsRouter.get('/summary', getSummary)
 documentsRouter.get('/graph', notImplemented)
-documentsRouter.get('/:id', validateParams(idParamSchema), notImplemented)
-documentsRouter.get('/:id/status', validateParams(idParamSchema), notImplemented)
+
+documentsRouter.get('/:id', validateParams(idParamSchema), getDocument)
+documentsRouter.get('/:id/status', validateParams(idParamSchema), getDocumentStatus)
 documentsRouter.post(
   '/:id/questions',
   validateParams(idParamSchema),
   validateBody(questionSchema),
   notImplemented,
 )
-documentsRouter.delete('/:id', validateParams(idParamSchema), notImplemented)
+documentsRouter.delete('/:id', validateParams(idParamSchema), deleteDocument)
 
 apiRouter.use('/documents', documentsRouter)

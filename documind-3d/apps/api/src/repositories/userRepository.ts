@@ -49,4 +49,3 @@ export class InMemoryUserRepository implements UserRepository {
   }
 }
 
-export const userRepository = new InMemoryUserRepository()

@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useState } from 'react'
-import { getSummary, listDocuments } from '../services/mockDocumentsApi'
+import { getSummary, listDocuments } from '../services/documentsApi'
 import type { DocumentListQuery, DocumentSummary, Paginated } from '../types/api'
 import type { DocumentItem } from '../types/document'
 
@@ -16,19 +16,16 @@ export type DocumentsState =
   | { status: 'error'; message: string }
   | { status: 'success'; list: List; summary: DocumentSummary; stale: boolean }
 
-export function useDocuments(query: DocumentListQuery, scenario: string | null) {
+export function useDocuments(query: DocumentListQuery) {
   const { page, pageSize, status, q, sort } = query
-  const key = [page, pageSize, status ?? '', q ?? '', sort, scenario ?? ''].join('|')
+  const key = [page, pageSize, status ?? '', q ?? '', sort].join('|')
 
   const [result, setResult] = useState<Result | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([
-      listDocuments({ page, pageSize, status, q, sort }, scenario),
-      getSummary(scenario),
-    ])
+    Promise.all([listDocuments({ page, pageSize, status, q, sort }), getSummary()])
       .then(([list, summary]) => {
         if (!cancelled) setResult({ key, outcome: { ok: true, list, summary } })
       })
@@ -41,13 +38,12 @@ export function useDocuments(query: DocumentListQuery, scenario: string | null) 
     return () => {
       cancelled = true
     }
-  }, [key, reloadToken, page, pageSize, status, q, sort, scenario])
+  }, [key, reloadToken, page, pageSize, status, q, sort])
 
   let state: DocumentsState
   if (!result) {
     state = { status: 'loading' }
   } else if (result.outcome.ok) {
-    // Filter/page badalne par purana data dim hoke dikhta rehta hai (stale), skeleton nahi
     state = {
       status: 'success',
       list: result.outcome.list,
@@ -61,7 +57,6 @@ export function useDocuments(query: DocumentListQuery, scenario: string | null) 
         : { status: 'loading' }
   }
 
-  // Active processing wale documents hon to har 3 second baad refresh (Day 9 par real polling)
   const hasActive =
     state.status === 'success' &&
     state.summary.byStatus.queued + state.summary.byStatus.processing > 0

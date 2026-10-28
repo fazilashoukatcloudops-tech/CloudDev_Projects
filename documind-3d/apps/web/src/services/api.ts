@@ -1,5 +1,7 @@
 ﻿const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
+export { BASE_URL }
+
 export class ApiError extends Error {
   status: number
   code: string
@@ -18,8 +20,9 @@ let unauthorizedHandler: (() => void) | null = null
 export function setUnauthorizedHandler(fn: (() => void) | null) {
   unauthorizedHandler = fn
 }
+export const notifyUnauthorized = () => unauthorizedHandler?.()
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response
   try {
     res = await fetch(`${BASE_URL}${path}`, {

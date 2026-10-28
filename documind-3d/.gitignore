@@ -10,3 +10,7 @@ build/
 Thumbs.db
 
 !.env.*.example
+
+# Day 7 - Database & Storage
+apps/api/storage/
+backups/

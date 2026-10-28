@@ -1,5 +1,4 @@
 ﻿import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { FileText, Plus, Search } from 'lucide-react'
 import { DashboardLayout } from '../components/layout'
 import {
@@ -16,7 +15,7 @@ import { Alert, Button, Card, EmptyState } from '../components/ui'
 import { useToast } from '../components/toast'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useDocuments } from '../hooks/useDocuments'
-import { createMockDocument, deleteMockDocument } from '../services/mockDocumentsApi'
+import { deleteDocument, uploadDocument } from '../services/documentsApi'
 import type { DocumentSort } from '../types/api'
 import type { DocumentItem } from '../types/document'
 import { formatBytes } from '../utils/format'
@@ -25,9 +24,7 @@ const PAGE_SIZE = 6
 
 export function DashboardPage() {
   // Test: /dashboard?state=empty  ya  /dashboard?state=error
-  const [params] = useSearchParams()
-  const scenario = params.get('state')
-  const { notify } = useToast()
+      const { notify } = useToast()
 
   const [searchInput, setSearchInput] = useState('')
   const q = useDebouncedValue(searchInput.trim(), 300)
@@ -46,26 +43,26 @@ export function DashboardPage() {
       q: q || undefined,
       sort,
     },
-    scenario,
+    
   )
 
   const filtersActive = q !== '' || status !== 'all'
   const selected =
     state.status === 'success' ? (state.list.data.find((d) => d.id === selectedId) ?? null) : null
 
-  const handleUploaded = async (file: File) => {
-    await createMockDocument(file)
+  const handleUpload = async (file: File, onProgress: (percent: number) => void) => {
+    await uploadDocument(file, onProgress)
     setSearchInput('')
     setStatus('all')
     setSort('newest')
     setPage(1)
     reload()
-    notify(`${file.name} upload ho gayi. Processing shuru.`, 'success')
+    notify(`${file.name} upload ho gayi.`, 'success')
   }
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteMockDocument(id)
+      await deleteDocument(id)
       setSelectedId(null)
       if (state.status === 'success' && state.list.data.length === 1 && page > 1) {
         setPage(page - 1)
@@ -200,7 +197,7 @@ export function DashboardPage() {
       </div>
 
       {uploadOpen && (
-        <UploadModal onClose={() => setUploadOpen(false)} onUploaded={handleUploaded} />
+        <UploadModal onClose={() => setUploadOpen(false)} onUpload={handleUpload} />
       )}
       {selected && (
         <DocumentDetailsModal

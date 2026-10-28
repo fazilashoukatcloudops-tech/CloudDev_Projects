@@ -1,7 +1,8 @@
 ﻿import type { RequestHandler, Response } from 'express'
 import { clearSessionCookie, SESSION_COOKIE } from '../lib/cookies'
 import { verifySession } from '../lib/tokens'
-import { userRepository, type User } from '../repositories/userRepository'
+import { userRepository } from '../repositories'
+import type { User } from '../repositories/userRepository'
 import { AppError } from './errorHandler'
 
 const unauthorized = () => new AppError(401, 'Login zaroori hai', 'UNAUTHORIZED')

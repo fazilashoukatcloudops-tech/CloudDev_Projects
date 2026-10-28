@@ -4,7 +4,8 @@ import { burnPasswordCheck, hashPassword, verifyPassword } from '../lib/password
 import { signSession } from '../lib/tokens'
 import { getAuthUser } from '../middleware/auth'
 import { AppError } from '../middleware/errorHandler'
-import { EmailTakenError, userRepository, type User } from '../repositories/userRepository'
+import { userRepository } from '../repositories'
+import { EmailTakenError, type User } from '../repositories/userRepository'
 import type { LoginInput, RegisterInput } from '../schemas/auth.schema'
 
 function toPublicUser(user: User) {

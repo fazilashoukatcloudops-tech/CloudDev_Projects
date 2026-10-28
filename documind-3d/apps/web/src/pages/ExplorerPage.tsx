@@ -20,13 +20,12 @@ const DocumentGalaxy = lazy(() => import('../components/three/DocumentGalaxy'))
 const EXPLORER_QUERY: DocumentListQuery = { page: 1, pageSize: 50, sort: 'oldest' }
 
 export default function ExplorerPage() {
-  // Test: /explorer?state=empty | ?state=error  |  /explorer?doc=<id> (pehle se select)
+  // Test: /explorer?doc=<id> (pehle se select)
   const [params] = useSearchParams()
-  const scenario = params.get('state')
-
+  
   const [selectedId, setSelectedId] = useState<string | null>(params.get('doc'))
   const [webgl] = useState(isWebGLAvailable)
-  const { state, retry } = useDocuments(EXPLORER_QUERY, scenario)
+  const { state, retry } = useDocuments(EXPLORER_QUERY)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

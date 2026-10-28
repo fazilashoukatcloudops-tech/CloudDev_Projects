@@ -1,11 +1,4 @@
-﻿import {
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type DragEvent,
-  type ReactNode,
-} from 'react'
+﻿import { useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
@@ -281,20 +274,17 @@ export function DocumentDetailsModal({
 }
 
 // ==================== UPLOAD MODAL ====================
-export function UploadModal({
-  onClose,
-  onUploaded,
-}: {
+
+type Props = {
   onClose: () => void
-  onUploaded: (file: File) => Promise<void>
-}) {
+  onUpload: (file: File, onProgress: (percent: number) => void) => Promise<void>
+}
+
+export function UploadModal({ onClose, onUpload }: Props) {
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
-  const timer = useRef<number | undefined>(undefined)
-
-  useEffect(() => () => window.clearInterval(timer.current), [])
 
   const uploading = progress !== null
 
@@ -316,24 +306,17 @@ export function UploadModal({
     pick(e.dataTransfer.files[0])
   }
 
-  const startUpload = () => {
+  const startUpload = async () => {
     if (!file) return
     setError(null)
     setProgress(0)
-    let value = 0
-    timer.current = window.setInterval(() => {
-      value += 10
-      setProgress(value)
-      if (value >= 100) {
-        window.clearInterval(timer.current)
-        onUploaded(file)
-          .then(onClose)
-          .catch(() => {
-            setProgress(null)
-            setError('Upload fail ho gaya. Dobara try karo.')
-          })
-      }
-    }, 150)
+    try {
+      await onUpload(file, setProgress)
+      onClose()
+    } catch (err) {
+      setProgress(null)
+      setError(err instanceof Error ? err.message : 'Upload fail ho gaya. Dobara try karo.')
+    }
   }
 
   return (
@@ -395,7 +378,7 @@ export function UploadModal({
             Cancel
           </Button>
           <Button disabled={!file} loading={uploading} onClick={startUpload}>
-            {uploading ? `${progress}%` : 'Upload'}
+            {uploading ? (progress === 100 ? 'Saving...' : `${progress}%`) : 'Upload'}
           </Button>
         </div>
       </div>

@@ -23,3 +23,8 @@ export function sanitizeFileName(raw: string): string {
   const name = cleaned.length > 255 ? cleaned.slice(-255) : cleaned
   return name || 'document.pdf'
 }
+export function attachmentHeader(fileName: string): string {
+  const fallback = fileName.replace(/[^\x20-\x7e]/g, '_').replace(/["\\%]/g, '_')
+  const encoded = encodeURIComponent(fileName).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`
+}

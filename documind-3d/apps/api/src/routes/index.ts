@@ -1,9 +1,10 @@
-﻿import { Router } from 'express'
+import { Router } from 'express'
 import { getHealth, getReadiness } from '../controllers/health.controller'
 import { login, logout, me, register } from '../controllers/auth.controller'
 import {
   createDocument,
   deleteDocument,
+  downloadDocument,
   getDocument,
   getDocumentStatus,
   getSummary,
@@ -52,6 +53,7 @@ documentsRouter.get('/graph', notImplemented)
 
 documentsRouter.get('/:id', validateParams(idParamSchema), getDocument)
 documentsRouter.get('/:id/status', validateParams(idParamSchema), getDocumentStatus)
+documentsRouter.get('/:id/download', validateParams(idParamSchema), downloadDocument)
 documentsRouter.post(
   '/:id/questions',
   validateParams(idParamSchema),

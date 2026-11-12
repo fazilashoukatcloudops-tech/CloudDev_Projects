@@ -1,7 +1,7 @@
-﻿import { randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import type { Request, Response } from 'express'
 import { toDocumentDto } from '../lib/documentDto'
-import { looksLikePdf, sanitizeFileName, sha256 } from '../lib/files'
+import { attachmentHeader, looksLikePdf, sanitizeFileName, sha256 } from '../lib/files'
 import { buildPaginationMeta } from '../lib/pagination'
 import { storage } from '../lib/storage'
 import { getAuthUser } from '../middleware/auth'
@@ -62,7 +62,17 @@ export async function createDocument(req: Request, res: Response) {
   const id = randomUUID()
   const storageKey = `${user.id}/${id}.pdf`
 
-  await storage.save(storageKey, file.buffer)
+  try {
+    await storage.save(storageKey, file.buffer)
+  } catch (err) {
+    console.error('Storage save failed', err)
+    throw new AppError(
+      503,
+      'File storage abhi available nahi. Thori der baad dobara try karo.',
+      'STORAGE_UNAVAILABLE',
+    )
+  }
+
   try {
     const record = await documentRepository.create({
       id,
@@ -77,6 +87,29 @@ export async function createDocument(req: Request, res: Response) {
   } catch (err) {
     await storage.remove(storageKey).catch(() => undefined)
     throw err
+  }
+}
+
+export async function downloadDocument(_req: Request, res: Response) {
+  const { id } = res.locals.params as { id: string }
+  const doc = await documentRepository.findOwned(getAuthUser(res).id, id)
+  if (!doc) throw notFound()
+
+  res.setHeader('Cache-Control', 'no-store')
+
+  try {
+    if (storage.presignedDownloadUrl) {
+      const url = await storage.presignedDownloadUrl(doc.storageKey, doc.name)
+      res.redirect(302, url)
+      return
+    }
+    const data = await storage.read(doc.storageKey)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', attachmentHeader(doc.name))
+    res.send(data)
+  } catch (err) {
+    console.error(`Download failed for document ${doc.id}`, err)
+    throw new AppError(503, 'File abhi available nahi.', 'STORAGE_UNAVAILABLE')
   }
 }
 

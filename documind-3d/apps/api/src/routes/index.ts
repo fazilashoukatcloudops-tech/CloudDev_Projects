@@ -9,6 +9,7 @@ import {
   getDocumentStatus,
   getSummary,
   listDocuments,
+  retryDocument,
 } from '../controllers/documents.controller'
 import { notImplemented } from '../controllers/notImplemented'
 import { requireAuth } from '../middleware/auth'
@@ -25,23 +26,17 @@ import {
 
 export const apiRouter = Router()
 
-// ==================== HEALTH ====================
 apiRouter.get('/health', getHealth)
 apiRouter.get('/health/ready', getReadiness)
 
-// ==================== AUTH ====================
 const authRouter = Router()
-authRouter.use((_req, res, next) => {
-  res.setHeader('Cache-Control', 'no-store')
-  next()
-})
+authRouter.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next() })
 authRouter.post('/register', validateBody(registerSchema), register)
 authRouter.post('/login', validateBody(loginSchema), login)
 authRouter.post('/logout', logout)
 authRouter.get('/me', requireAuth, me)
 apiRouter.use('/auth', authRouter)
 
-// ==================== DOCUMENTS (protected) ====================
 const documentsRouter = Router()
 documentsRouter.use(requireAuth)
 
@@ -54,6 +49,7 @@ documentsRouter.get('/graph', notImplemented)
 documentsRouter.get('/:id', validateParams(idParamSchema), getDocument)
 documentsRouter.get('/:id/status', validateParams(idParamSchema), getDocumentStatus)
 documentsRouter.get('/:id/download', validateParams(idParamSchema), downloadDocument)
+documentsRouter.post('/:id/retry', validateParams(idParamSchema), retryDocument)
 documentsRouter.post(
   '/:id/questions',
   validateParams(idParamSchema),

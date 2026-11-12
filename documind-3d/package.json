@@ -5,8 +5,12 @@
     "dev:api": "npm --prefix apps/api run dev",
     "dev:web": "npm --prefix apps/web run dev",
     "check": "npm --prefix apps/api run check && npm --prefix apps/web run check",
-    "db:up": "docker compose up -d db --wait",
-    "db:down": "docker compose stop db",
-    "db:logs": "docker compose logs -f db"
+    "db:up": "docker compose up -d db redis --wait",
+    "db:down": "docker compose stop db redis",
+    "db:logs": "docker compose logs -f db",
+    "dev:worker": "npm --prefix apps/api run worker",
+    "dev:worker:aws": "npm --prefix apps/api run worker:aws",
+    "app:up": "docker compose --profile app up -d --build",
+    "app:down": "docker compose --profile app stop api worker"
   }
 }

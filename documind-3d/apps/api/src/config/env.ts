@@ -1,6 +1,8 @@
 import 'dotenv/config'
 import { z } from 'zod'
 
+const bool = z.enum(['true', 'false']).default('false').transform((v) => v === 'true')
+
 const schema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -9,7 +11,7 @@ const schema = z
 
     JWT_SECRET: z.string().min(32, 'JWT_SECRET kam az kam 32 characters ka hona chahiye'),
     JWT_EXPIRES_DAYS: z.coerce.number().int().min(1).max(30).default(7),
-    COOKIE_SECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+    COOKIE_SECURE: bool,
     BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
 
     DATA_STORE: z.enum(['postgres', 'memory']).default('postgres'),
@@ -19,20 +21,34 @@ const schema = z
     UPLOAD_DIR: z.string().default('./storage/uploads'),
     MAX_UPLOAD_MB: z.coerce.number().min(1).max(50).default(10),
 
-    AWS_REGION: z.string().optional(),
-    S3_BUCKET: z.string().optional(),
+    AWS_REGION: z.string().min(1).optional(),
+    S3_BUCKET: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/, 'Invalid S3 bucket name').optional(),
     S3_PRESIGN_EXPIRES_SECONDS: z.coerce.number().int().min(10).max(900).default(60),
+
+    QUEUE_DRIVER: z.enum(['bullmq', 'memory']).default('bullmq'),
+    REDIS_URL: z.string().url().optional(),
+    WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(2),
+    JOB_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
+    JOB_BACKOFF_MS: z.coerce.number().int().min(10).max(60_000).default(2000),
+    WORKER_HEALTH_PORT: z.coerce.number().int().min(1).max(65535).default(4100),
+    WORKER_DEBUG_HOOKS: bool,
+    PROCESS_SIMULATED_DELAY_MS: z.coerce.number().int().min(0).max(60_000).default(0),
   })
   .superRefine((v, ctx) => {
-    if (v.NODE_ENV === 'production' && /change-me/i.test(v.JWT_SECRET)) {
-      ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'Production mein placeholder secret allowed nahi' })
-    }
-    if (v.DATA_STORE === 'postgres' && !v.DATABASE_URL) {
-      ctx.addIssue({ code: 'custom', path: ['DATABASE_URL'], message: 'DATA_STORE=postgres ke liye DATABASE_URL zaroori hai' })
-    }
+    const fail = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message })
+    if (v.NODE_ENV === 'production' && /change-me/i.test(v.JWT_SECRET)) fail('JWT_SECRET', 'Production mein placeholder secret allowed nahi')
+    if (v.DATA_STORE === 'postgres' && !v.DATABASE_URL) fail('DATABASE_URL', 'DATA_STORE=postgres ke liye DATABASE_URL zaroori hai')
     if (v.STORAGE_DRIVER === 's3') {
-      if (!v.AWS_REGION) ctx.addIssue({ code: 'custom', path: ['AWS_REGION'], message: 's3 ke liye AWS_REGION zaroori hai' })
-      if (!v.S3_BUCKET) ctx.addIssue({ code: 'custom', path: ['S3_BUCKET'], message: 's3 ke liye S3_BUCKET zaroori hai' })
+      for (const key of ['AWS_REGION', 'S3_BUCKET'] as const) {
+        if (!v[key]) fail(key, `STORAGE_DRIVER=s3 ke liye ${key} zaroori hai`)
+      }
+    }
+    if (v.QUEUE_DRIVER === 'bullmq' && !v.REDIS_URL) fail('REDIS_URL', 'QUEUE_DRIVER=bullmq ke liye REDIS_URL zaroori hai (e.g. redis://localhost:6379)')
+    if (v.NODE_ENV === 'production') {
+      if (v.DATA_STORE === 'memory') fail('DATA_STORE', 'Production mein memory store allowed nahi')
+      if (v.STORAGE_DRIVER === 'memory') fail('STORAGE_DRIVER', 'Production mein memory storage allowed nahi')
+      if (v.QUEUE_DRIVER === 'memory') fail('QUEUE_DRIVER', 'Production mein memory queue allowed nahi')
+      if (v.WORKER_DEBUG_HOOKS) fail('WORKER_DEBUG_HOOKS', 'Production mein debug hooks allowed nahi')
     }
   })
 

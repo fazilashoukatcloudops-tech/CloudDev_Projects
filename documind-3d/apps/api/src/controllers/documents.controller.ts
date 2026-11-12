@@ -6,10 +6,12 @@ import { buildPaginationMeta } from '../lib/pagination'
 import { storage } from '../lib/storage'
 import { getAuthUser } from '../middleware/auth'
 import { AppError } from '../middleware/errorHandler'
-import { documentRepository } from '../repositories'
+import { documentQueue } from '../queue'
+import { documentRepository, type DocumentRecord } from '../repositories'
 import type { ListDocumentsQuery } from '../validation'
 
 const notFound = () => new AppError(404, 'Document nahi mila', 'NOT_FOUND')
+const QUEUE_DOWN_MESSAGE = 'Processing queue abhi available nahi. File save ho gayi hai, thori der baad "Retry processing" dabao.'
 
 export async function listDocuments(_req: Request, res: Response) {
   const user = getAuthUser(res)
@@ -66,15 +68,12 @@ export async function createDocument(req: Request, res: Response) {
     await storage.save(storageKey, file.buffer)
   } catch (err) {
     console.error('Storage save failed', err)
-    throw new AppError(
-      503,
-      'File storage abhi available nahi. Thori der baad dobara try karo.',
-      'STORAGE_UNAVAILABLE',
-    )
+    throw new AppError(503, 'File storage abhi available nahi. Thori der baad dobara try karo.', 'STORAGE_UNAVAILABLE')
   }
 
+  let record: DocumentRecord
   try {
-    const record = await documentRepository.create({
+    record = await documentRepository.create({
       id,
       userId: user.id,
       name,
@@ -83,11 +82,42 @@ export async function createDocument(req: Request, res: Response) {
       storageKey,
       checksumSha256: sha256(file.buffer),
     })
-    res.status(201).json({ data: toDocumentDto(record) })
   } catch (err) {
     await storage.remove(storageKey).catch(() => undefined)
     throw err
   }
+
+  try {
+    await documentQueue.enqueue(record.id)
+  } catch (err) {
+    console.error(`Enqueue failed for document ${record.id}`, err)
+    await documentRepository.markFailed(record.id, QUEUE_DOWN_MESSAGE)
+    record = (await documentRepository.findOwned(user.id, record.id)) ?? record
+  }
+
+  res.status(201).json({ data: toDocumentDto(record) })
+}
+
+export async function retryDocument(_req: Request, res: Response) {
+  const user = getAuthUser(res)
+  const { id } = res.locals.params as { id: string }
+
+  const requeued = await documentRepository.requeueFailed(user.id, id)
+  if (!requeued) {
+    const doc = await documentRepository.findOwned(user.id, id)
+    if (!doc) throw notFound()
+    throw new AppError(409, 'Sirf failed documents dobara process ho sakte hain', 'CONFLICT')
+  }
+
+  try {
+    await documentQueue.enqueue(id, { retry: true })
+  } catch (err) {
+    console.error(`Retry enqueue failed for document ${id}`, err)
+    await documentRepository.markFailed(id, QUEUE_DOWN_MESSAGE)
+    throw new AppError(503, 'Processing queue abhi available nahi.', 'QUEUE_UNAVAILABLE')
+  }
+
+  res.status(202).json({ data: toDocumentDto(requeued) })
 }
 
 export async function downloadDocument(_req: Request, res: Response) {

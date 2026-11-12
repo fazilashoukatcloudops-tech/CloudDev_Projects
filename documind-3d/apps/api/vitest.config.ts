@@ -1,4 +1,4 @@
-﻿import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
@@ -12,6 +12,7 @@ export default defineConfig({
       DATA_STORE: 'memory',
       STORAGE_DRIVER: 'memory',
       MAX_UPLOAD_MB: '1',
+      QUEUE_DRIVER: 'memory',
     },
   },
 })

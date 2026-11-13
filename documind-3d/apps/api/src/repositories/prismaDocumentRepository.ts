@@ -1,10 +1,15 @@
 import { Prisma, type DocumentStatus as DbStatus, type Document as DocumentRow, type PrismaClient } from '@prisma/client'
 import type { DocumentSort } from '../validation'
-import type { DocumentRecord, DocumentRepository, DocumentStatus, DocumentSummary, ListParams, NewDocument } from './documentRepository'
+import type { DocumentRecord, DocumentRepository, DocumentStatus, DocumentSummary, ListParams, NewDocument, ReadyExtra } from './documentRepository'
 
 const toDb = (s: DocumentStatus) => s.toUpperCase() as DbStatus
 const toStatus = (s: DbStatus) => s.toLowerCase() as DocumentStatus
-const toRecord = (row: DocumentRow): DocumentRecord => ({ ...row, status: toStatus(row.status) })
+const toRecord = (row: DocumentRow): DocumentRecord => ({ 
+  ...row, 
+  status: toStatus(row.status),
+  centroid: row.centroid || [], 
+  centroidModel: row.centroidModel 
+})
 
 const ORDER: Record<DocumentSort, Prisma.DocumentOrderByWithRelationInput[]> = {
   newest: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -65,9 +70,18 @@ export class PrismaDocumentRepository implements DocumentRepository {
   }
 
   markProcessing(id: string) { return this.transition(id, ['QUEUED', 'PROCESSING'], { status: 'PROCESSING', errorMessage: null }) }
-  markReady(id: string, pages: number) { return this.transition(id, ['PROCESSING'], { status: 'READY', pages, errorMessage: null }) }
+  
+  markReady(id: string, pages: number, extra?: ReadyExtra) { 
+    return this.transition(id, ['PROCESSING'], { status: 'READY', pages, errorMessage: null, ...extra }) 
+  }
+  
   markFailed(id: string, message: string) { return this.transition(id, ['QUEUED', 'PROCESSING'], { status: 'FAILED', errorMessage: message }) }
+  
   markQueued(id: string) { return this.transition(id, ['PROCESSING'], { status: 'QUEUED', errorMessage: null }) }
+
+  async setCentroid(id: string, centroid: number[], model: string) {
+    await this.db.document.updateMany({ where: { id }, data: { centroid, centroidModel: model } });
+  }
 
   async requeueFailed(userId: string, id: string) {
     const result = await this.db.document.updateMany({

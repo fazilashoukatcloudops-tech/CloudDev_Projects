@@ -15,11 +15,17 @@ export type DocumentRecord = {
   errorMessage: string | null
   createdAt: Date
   updatedAt: Date
+  previewText: string | null
+  chunkCount: number
+  textChars: number
+  centroid: number[]
+  centroidModel: string | null
 }
 
 export type NewDocument = Pick<DocumentRecord, 'id' | 'userId' | 'name' | 'mimeType' | 'sizeBytes' | 'storageKey' | 'checksumSha256'>
 export type ListParams = { userId: string; page: number; pageSize: number; status?: DocumentStatus; q?: string; sort: DocumentSort }
 export type DocumentSummary = { total: number; byStatus: Record<DocumentStatus, number>; storageBytes: number }
+export type ReadyExtra = { previewText: string; chunkCount: number; textChars: number }
 
 export interface DocumentRepository {
   create(input: NewDocument): Promise<DocumentRecord>
@@ -27,13 +33,13 @@ export interface DocumentRepository {
   list(params: ListParams): Promise<{ items: DocumentRecord[]; total: number }>
   summary(userId: string): Promise<DocumentSummary>
   deleteOwned(userId: string, id: string): Promise<DocumentRecord | null>
-  
   findForProcessing(id: string): Promise<DocumentRecord | null>
   markProcessing(id: string): Promise<boolean>
-  markReady(id: string, pages: number): Promise<boolean>
+  markReady(id: string, pages: number, extra?: ReadyExtra): Promise<boolean>
   markFailed(id: string, message: string): Promise<boolean>
   markQueued(id: string): Promise<boolean>
   requeueFailed(userId: string, id: string): Promise<DocumentRecord | null>
+  setCentroid(id: string, centroid: number[], model: string): Promise<void>
 }
 
 type Comparator = (a: DocumentRecord, b: DocumentRecord) => number
@@ -49,7 +55,10 @@ export class InMemoryDocumentRepository implements DocumentRepository {
 
   async create(input: NewDocument) {
     const now = new Date()
-    const record: DocumentRecord = { ...input, pages: null, status: 'queued', errorMessage: null, createdAt: now, updatedAt: now }
+    const record: DocumentRecord = { 
+      ...input, pages: null, status: 'queued', errorMessage: null, createdAt: now, updatedAt: now,
+      previewText: null, chunkCount: 0, textChars: 0, centroid: [], centroidModel: null
+    }
     this.docs.set(record.id, record)
     return record
   }
@@ -98,8 +107,8 @@ export class InMemoryDocumentRepository implements DocumentRepository {
     return this.transition(id, ['queued', 'processing'], { status: 'processing', errorMessage: null })
   }
 
-  async markReady(id: string, pages: number) {
-    return this.transition(id, ['processing'], { status: 'ready', pages, errorMessage: null })
+  async markReady(id: string, pages: number, extra?: ReadyExtra) {
+    return this.transition(id, ['processing'], { status: 'ready', pages, errorMessage: null, ...extra })
   }
 
   async markFailed(id: string, message: string) {
@@ -108,6 +117,11 @@ export class InMemoryDocumentRepository implements DocumentRepository {
 
   async markQueued(id: string) {
     return this.transition(id, ['processing'], { status: 'queued', errorMessage: null })
+  }
+
+  async setCentroid(id: string, centroid: number[], model: string) {
+    const doc = this.docs.get(id)
+    if (doc) this.docs.set(id, { ...doc, centroid, centroidModel: model })
   }
 
   async requeueFailed(userId: string, id: string) {

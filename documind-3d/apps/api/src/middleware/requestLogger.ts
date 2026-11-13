@@ -9,9 +9,10 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
 
   res.on('finish', () => {
     if (env.NODE_ENV === 'test') return
-    console.log(
-      `[${id.slice(0, 8)}] ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`,
-    )
+    const ms = Date.now() - start
+    const line = `[${id.slice(0, 8)}] ${req.method} ${req.originalUrl} ${res.statusCode} ${ms}ms`
+    if (ms >= env.SLOW_REQUEST_MS) console.warn(`SLOW ${line}`)
+    else console.log(line)
   })
   next()
 }

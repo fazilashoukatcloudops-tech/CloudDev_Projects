@@ -1,4 +1,4 @@
-﻿import type { DocumentStatus } from '../../types/document'
+import type { DocumentStatus } from '../../types/document'
 
 export type Vec3 = [number, number, number]
 export type Edge = [number, number]
@@ -32,36 +32,6 @@ export function nodeRadius(sizeBytes: number): number {
   return Math.min(0.7, 0.28 + 0.12 * Math.sqrt(mb))
 }
 
-const dist2 = (a: Vec3, b: Vec3) =>
-  (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2
-
-// Placeholder: har node ko k qareebi neighbours se jodta hai.
-// Day 11+ mein yeh embeddings ki similarity se replace hoga.
-export function buildEdges(positions: Vec3[], k = 2): Edge[] {
-  const seen = new Set<string>()
-  const edges: Edge[] = []
-
-  positions.forEach((p, i) => {
-    const nearest = positions
-      .map((q, j) => ({ j, d: dist2(p, q) }))
-      .filter((x) => x.j !== i)
-      .sort((a, b) => a.d - b.d)
-      .slice(0, k)
-
-    for (const { j } of nearest) {
-      const a = Math.min(i, j)
-      const b = Math.max(i, j)
-      const key = `${a}-${b}`
-      if (!seen.has(key)) {
-        seen.add(key)
-        edges.push([a, b])
-      }
-    }
-  })
-  return edges
-}
-
-// lineSegments ke liye flat array: [x1,y1,z1, x2,y2,z2, ...]
 export function edgePositions(positions: Vec3[], edges: Edge[]): Float32Array {
   const out = new Float32Array(edges.length * 6)
   edges.forEach(([a, b], i) => {

@@ -1,16 +1,16 @@
-﻿import { useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, OrbitControls, Sparkles, Stats } from '@react-three/drei'
 import * as THREE from 'three'
 import { useIsMobile, usePrefersReducedMotion } from '../../hooks/useMediaQuery'
 import type { DocumentItem } from '../../types/document'
+import type { GraphEdge } from '../../types/graph'
 import {
   STATUS_COLORS,
-  buildEdges,
   edgePositions,
   nodePosition,
   nodeRadius,
-  type Vec3,
+  type Edge, type Vec3,
 } from './galaxyLayout'
 
 type Controls = ComponentRef<typeof OrbitControls>
@@ -207,38 +207,41 @@ function FocusRig({
 
 type Props = {
   documents: DocumentItem[]
+  edges: GraphEdge[]
   selectedId: string | null
   onSelect: (id: string) => void
 }
 
-export default function DocumentGalaxy({ documents, selectedId, onSelect }: Props) {
+export default function DocumentGalaxy({ documents, edges, selectedId, onSelect }: Props) {
   const isMobile = useIsMobile()
   const reducedMotion = usePrefersReducedMotion()
   const animate = !reducedMotion
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const controlsRef = useRef<Controls>(null)
 
-  const layout = useMemo(() => {
-    const positions = documents.map((_, i) => nodePosition(i))
-    return { positions, edges: buildEdges(positions) }
-  }, [documents])
+  const positions = useMemo(() => documents.map((_, i) => nodePosition(i)), [documents])
+
+  const pairs = useMemo(() => {
+    const index = new Map(documents.map((d, i) => [d.id, i]))
+    const out: Edge[] = []
+    for (const e of edges) {
+      const a = index.get(e.source)
+      const b = index.get(e.target)
+      if (a !== undefined && b !== undefined) out.push([a, b])
+    }
+    return out
+  }, [documents, edges])
 
   const selectedIndex = documents.findIndex((d) => d.id === selectedId)
-  const focus = selectedIndex >= 0 ? layout.positions[selectedIndex] : null
+  const focus = selectedIndex >= 0 ? positions[selectedIndex] : null
 
-  const links = useMemo(
-    () => edgePositions(layout.positions, layout.edges),
-    [layout],
-  )
+  const links = useMemo(() => edgePositions(positions, pairs), [positions, pairs])
   const activeLinks = useMemo(
     () =>
       selectedIndex < 0
         ? null
-        : edgePositions(
-            layout.positions,
-            layout.edges.filter(([a, b]) => a === selectedIndex || b === selectedIndex),
-          ),
-    [layout, selectedIndex],
+        : edgePositions(positions, pairs.filter(([a, b]) => a === selectedIndex || b === selectedIndex)),
+    [positions, pairs, selectedIndex],
   )
 
   useEffect(() => {
@@ -262,12 +265,14 @@ export default function DocumentGalaxy({ documents, selectedId, onSelect }: Prop
 
       <Hub animate={animate} />
 
-      <lineSegments frustumCulled={false}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[links, 3]} />
-        </bufferGeometry>
-        <lineBasicMaterial color="#475569" transparent opacity={0.6} />
-      </lineSegments>
+      {links.length > 0 && (
+        <lineSegments frustumCulled={false}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[links, 3]} />
+          </bufferGeometry>
+          <lineBasicMaterial color="#475569" transparent opacity={0.6} />
+        </lineSegments>
+      )}
 
       {activeLinks && activeLinks.length > 0 && (
         <lineSegments frustumCulled={false}>
@@ -282,7 +287,7 @@ export default function DocumentGalaxy({ documents, selectedId, onSelect }: Prop
         <DocumentNode
           key={doc.id}
           doc={doc}
-          position={layout.positions[i]}
+          position={positions[i]}
           radius={nodeRadius(doc.sizeBytes)}
           selected={doc.id === selectedId}
           hovered={doc.id === hoveredId}

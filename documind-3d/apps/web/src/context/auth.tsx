@@ -1,4 +1,4 @@
-﻿import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   ApiError,
   getMe,
@@ -8,18 +8,7 @@ import {
   setUnauthorizedHandler,
   type AuthUser,
 } from '../services/api'
-
-export type AuthContextValue = {
-  status: 'loading' | 'authenticated' | 'unauthenticated' | 'error'
-  user: AuthUser | null
-  errorMessage: string | null
-  login: (input: { email: string; password: string }) => Promise<void>
-  register: (input: { name: string; email: string; password: string }) => Promise<void>
-  logout: () => Promise<void>
-  retry: () => void
-}
-
-export const AuthContext = createContext<AuthContextValue | null>(null)
+import { AuthContext, type AuthContextValue } from './authContext'
 
 type State =
   | { status: 'loading' }
@@ -30,6 +19,7 @@ type State =
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -46,23 +36,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setState({ status: 'error', message })
         }
       })
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [attempt])
 
   useEffect(() => {
-    setUnauthorizedHandler(() => setState({ status: 'unauthenticated' }))
+    setUnauthorizedHandler(() => {
+      setSessionExpired(true)
+      setState({ status: 'unauthenticated' })
+    })
     return () => setUnauthorizedHandler(null)
   }, [])
 
   const login = useCallback<AuthContextValue['login']>(async (input) => {
     const { user } = await apiLogin(input)
+    setSessionExpired(false)
     setState({ status: 'authenticated', user })
   }, [])
 
   const register = useCallback<AuthContextValue['register']>(async (input) => {
     const { user } = await apiRegister(input)
+    setSessionExpired(false)
     setState({ status: 'authenticated', user })
   }, [])
 
@@ -81,12 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status: state.status,
       user: state.status === 'authenticated' ? state.user : null,
       errorMessage: state.status === 'error' ? state.message : null,
+      sessionExpired,
       login,
       register,
       logout,
       retry,
     }),
-    [state, login, register, logout, retry],
+    [state, sessionExpired, login, register, logout, retry],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

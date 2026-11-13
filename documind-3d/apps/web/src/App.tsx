@@ -1,9 +1,10 @@
-﻿import { Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { GuestRoute, ProtectedRoute } from './components/auth'
 import { LandingPage } from './pages/LandingPage'
 import { LoginPage, RegisterPage } from './pages/auth'
 import { DashboardPage, NotFoundPage } from './pages/dashboard'
 import ExplorerPage from './pages/ExplorerPage'
+import ChatPage from './pages/ChatPage'
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/explorer" element={<ExplorerPage />} />
+          <Route path="/documents/:id/chat" element={<ChatPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

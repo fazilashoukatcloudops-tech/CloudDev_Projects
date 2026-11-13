@@ -13,7 +13,7 @@ export function createDocumentWorker(cfg: WorkerConfig) {
       console.log(`[worker] job ${job.id} start (document ${job.data.documentId}, attempt ${attempt})`)
       return processDocument({ documentId: job.data.documentId, attempt }, cfg.deps)
     },
-    { connection: cfg.connection, concurrency: cfg.concurrency },
+    { connection: cfg.connection, concurrency: cfg.concurrency, lockDuration: 60_000 },
   )
 
   worker.on('failed', (job: Job<DocumentJobData> | undefined, err: Error) => {

@@ -1,4 +1,4 @@
-﻿import express from 'express'
+import express from 'express'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -10,9 +10,21 @@ import { requestLogger } from './middleware/requestLogger'
 
 export const app = express()
 
-app.use(helmet())
-app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }))
-app.use(express.json({ limit: '1mb' }))
+app.set('trust proxy', env.TRUST_PROXY)
+
+app.use(helmet({
+  contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
+  crossOriginResourcePolicy: { policy: 'same-site' },
+  referrerPolicy: { policy: 'no-referrer' },
+}))
+app.use(cors({
+  origin: env.CORS_ORIGIN,
+  credentials: true,
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  maxAge: 600,
+}))
+app.use(express.json({ limit: '100kb' }))
 app.use(cookieParser())
 app.use(requestLogger)
 app.use(originCheck)

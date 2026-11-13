@@ -1,10 +1,10 @@
 import http from 'node:http'
 import { env } from '../config/env'
-import { withTimeout } from '../lib/withTimeout'
 import { storage } from '../lib/storage'
+import { embedder } from '../lib/embeddings'
 import { redisConnection } from '../queue/connection'
 import { QUEUE_NAME } from '../queue/constants'
-import { closeStores, documentRepository } from '../repositories'
+import { closeStores, documentRepository, chunkRepository } from '../repositories'
 import { createDocumentWorker } from './createWorker'
 
 const redisUrl = env.REDIS_URL
@@ -17,18 +17,26 @@ const worker = createDocumentWorker({
   queueName: QUEUE_NAME,
   connection: redisConnection(redisUrl, { maxRetriesPerRequest: null }),
   concurrency: env.WORKER_CONCURRENCY,
-  deps: { documents: documentRepository, storage, simulatedDelayMs: env.PROCESS_SIMULATED_DELAY_MS, debugHooks: env.WORKER_DEBUG_HOOKS },
+  deps: {
+    documents: documentRepository,
+    storage,
+    chunks: chunkRepository,
+    limits: { maxPages: env.MAX_PDF_PAGES, maxChars: env.MAX_EXTRACTED_CHARS, timeoutMs: env.PROCESS_TIMEOUT_MS },
+    embedder,
+    simulatedDelayMs: env.PROCESS_SIMULATED_DELAY_MS,
+    debugHooks: env.WORKER_DEBUG_HOOKS,
+  },
 })
 
 const health = http.createServer((req, res) => {
-  if (req.url !== '/health') return res.writeHead(404).end()
-  withTimeout(worker.client.then((c) => c.ping()), 2000, 'redis ping')
-    .then(() => worker.isRunning())
-    .catch(() => false)
-    .then((ok) => {
-      res.writeHead(ok ? 200 : 503, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ status: ok ? 'ok' : 'unavailable' }))
-    })
+  if (req.url !== '/health') {
+    res.writeHead(404).end()
+    return
+  }
+  // Simple check: is the worker running?
+  const ok = worker.isRunning()
+  res.writeHead(ok ? 200 : 503, { 'Content-Type': 'application/json' })
+  res.end(JSON.stringify({ status: ok ? 'ok' : 'unavailable' }))
 })
 health.listen(env.WORKER_HEALTH_PORT)
 

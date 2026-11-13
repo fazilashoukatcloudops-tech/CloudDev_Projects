@@ -64,3 +64,31 @@ export function uploadDocument(
     xhr.send(form)
   })
 }
+
+export const getDocument = (id: string) =>
+  request<{ data: DocumentItem }>(`/documents/${id}`).then((r) => r.data)
+
+export type DocumentPreview = { previewText: string; pages: number | null; chunkCount: number; textChars: number }
+export const getDocumentPreview = (id: string) =>
+  request<{ data: DocumentPreview }>(`/documents/${id}/preview`).then((r) => r.data)
+
+export type AskSource = { n: number; chunkId: string; page: number; snippet: string; score: number }
+export type AskResult = {
+  answer: string
+  sources: AskSource[]
+  mode: 'llm' | 'extractive' | 'not_found'
+  retrieval: 'semantic' | 'keyword'
+  notice?: string
+}
+export const askQuestion = (id: string, question: string) =>
+  request<{ data: AskResult }>(`/documents/${id}/questions`, { method: 'POST', body: JSON.stringify({ question }) }).then((r) => r.data)
+
+export type GraphData = {
+  nodes: DocumentItem[]
+  edges: { source: string; target: string; weight: number }[]
+  meta: { total: number; limit: number; truncated: boolean }
+}
+export const getGraph = () =>
+  request<{ data: Pick<GraphData, 'nodes' | 'edges'>; meta: GraphData['meta'] }>('/documents/graph').then(
+    (r): GraphData => ({ ...r.data, meta: r.meta }),
+  )

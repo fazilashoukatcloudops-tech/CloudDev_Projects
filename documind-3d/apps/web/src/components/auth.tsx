@@ -1,4 +1,4 @@
-﻿import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Alert, Button, Spinner } from './ui'
 import { useAuth } from '../hooks/useAuth'
 

@@ -40,7 +40,33 @@ model Document {
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
+  
+  previewText    String?        @map("preview_text")
+  chunkCount     Int            @default(0) @map("chunk_count")
+  textChars      Int            @default(0) @map("text_chars")
+  chunks         DocumentChunk[]
+  centroid       Float[]        @default([])
+  centroidModel  String?        @map("centroid_model")
+
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, status])
   @@map("documents")
+}
+
+model DocumentChunk {
+  id             String   @id @default(uuid()) @db.Uuid
+  documentId     String   @map("document_id") @db.Uuid
+  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId         String   @map("user_id") @db.Uuid
+  chunkIndex     Int      @map("chunk_index")
+  pageStart      Int      @map("page_start")
+  pageEnd        Int      @map("page_end")
+  content        String
+  embedding      Float[]  @default([])
+  embeddingModel String?  @map("embedding_model")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([documentId, chunkIndex])
+  @@index([userId, documentId])
+  @@map("document_chunks")
 }

@@ -7,11 +7,24 @@ import { storage } from '../lib/storage'
 import { getAuthUser } from '../middleware/auth'
 import { AppError } from '../middleware/errorHandler'
 import { documentQueue } from '../queue'
-import { documentRepository, type DocumentRecord } from '../repositories'
+import { documentRepository, chunkRepository } from '../repositories'
 import type { ListDocumentsQuery } from '../validation'
+import type { DocumentRecord } from '../repositories/documentRepository'
+import { env } from '../config/env'
+import { embedder } from '../lib/embeddings'
+import { answerGenerator } from '../lib/llm'
+import { answerQuestion, type RagDeps } from '../lib/rag'
+import { buildGraph, GRAPH_LIMIT } from '../lib/graph'
 
 const notFound = () => new AppError(404, 'Document nahi mila', 'NOT_FOUND')
 const QUEUE_DOWN_MESSAGE = 'Processing queue abhi available nahi. File save ho gayi hai, thori der baad "Retry processing" dabao.'
+
+const ragDeps: RagDeps = {
+  chunks: chunkRepository,
+  embedder,
+  generator: answerGenerator,
+  topK: env.RAG_TOP_K,
+}
 
 export async function listDocuments(_req: Request, res: Response) {
   const user = getAuthUser(res)
@@ -152,4 +165,50 @@ export async function deleteDocument(_req: Request, res: Response) {
     console.error(`Storage cleanup failed for ${deleted.storageKey}`, err)
   })
   res.status(204).end()
+}
+
+export async function askQuestion(req: Request, res: Response) {
+  const user = getAuthUser(res)
+  const { id } = res.locals.params as { id: string }
+  const { question } = req.body as { question: string }
+
+  const doc = await documentRepository.findOwned(user.id, id)
+  if (!doc) throw notFound()
+  if (doc.status !== 'ready') {
+    throw new AppError(409, 'Document abhi ready nahi. Processing khatam hone par sawal poochho.', 'CONFLICT')
+  }
+
+  const result = await answerQuestion({ userId: user.id, documentId: id, question }, ragDeps)
+  res.setHeader('Cache-Control', 'no-store')
+  res.json({ data: result })
+}
+
+export async function getGraph(_req: Request, res: Response) {
+  const graph = await buildGraph(getAuthUser(res).id, {
+    documents: documentRepository,
+    chunks: chunkRepository,
+    embedder,
+  })
+  res.setHeader('Cache-Control', 'no-store')
+  res.json({
+    data: { nodes: graph.nodes.map(toDocumentDto), edges: graph.edges },
+    meta: { total: graph.total, limit: GRAPH_LIMIT, truncated: graph.total > GRAPH_LIMIT },
+  })
+}
+
+export async function getDocumentPreview(_req: Request, res: Response) {
+  const { id } = res.locals.params as { id: string }
+  const doc = await documentRepository.findOwned(getAuthUser(res).id, id)
+  if (!doc) throw notFound()
+  if (doc.status !== 'ready') {
+    throw new AppError(409, 'Preview tab milega jab document ready ho', 'CONFLICT')
+  }
+  res.json({
+    data: {
+      previewText: doc.previewText ?? '',
+      pages: doc.pages,
+      chunkCount: doc.chunkCount,
+      textChars: doc.textChars,
+    },
+  })
 }

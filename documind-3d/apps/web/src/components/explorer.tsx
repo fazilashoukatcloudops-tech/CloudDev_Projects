@@ -1,6 +1,6 @@
-﻿import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { X } from 'lucide-react'
-import { Alert, Button, Card, StatusBadge, buttonClasses } from './ui'
+import { Alert, Card, StatusBadge, buttonClasses } from './ui'
 import { STATUS_COLORS } from './three/galaxyLayout'
 import { formatBytes, formatDate } from '../utils/format'
 import type { DocumentItem, DocumentStatus } from '../types/document'
@@ -26,6 +26,7 @@ export function GalaxyLegend() {
         </li>
       ))}
       <li className="pt-1 text-slate-500">Node size = file size</li>
+      <li className="text-slate-500">Line = milta-julta content</li>
     </ul>
   )
 }
@@ -74,9 +75,11 @@ export function ExplorerDocumentList({ documents, selectedId, onSelect }: ListPr
 }
 
 // ==================== DETAILS PANEL ====================
-type DetailsProps = { doc: DocumentItem; onClose: () => void }
+export type RelatedDoc = { doc: DocumentItem; weight: number }
+type DetailsProps = { doc: DocumentItem; related: RelatedDoc[]; onSelect: (id: string) => void; onClose: () => void }
 
-export function DocumentDetailsPanel({ doc, onClose }: DetailsProps) {
+export function DocumentDetailsPanel({ doc, related, onSelect, onClose }: DetailsProps) {
+  const ready = doc.status === 'ready'
   const rows: [string, string | number][] = [
     ['Size', formatBytes(doc.sizeBytes)],
     ['Pages', doc.pages ?? 'Unknown'],
@@ -116,10 +119,30 @@ export function DocumentDetailsPanel({ doc, onClose }: DetailsProps) {
         <Alert variant="info">Processing jaari hai. Status khud update hota rahega.</Alert>
       )}
 
+
+      {doc.status === 'ready' && (
+        <section aria-label="Related documents" className="space-y-1">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400">Related documents</h3>
+          {related.length === 0 ? (
+            <p className="text-xs text-slate-500">Koi milta-julta document nahi mila.</p>
+          ) : (
+            <ul className="space-y-1">
+              {related.map(({ doc: r, weight }) => (
+                <li key={r.id}>
+                  <button type="button" onClick={() => onSelect(r.id)}
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-800">
+                    <span className="min-w-0 truncate">{r.name}</span>
+                    <span className="text-xs text-slate-500">{Math.round(weight * 100)}%</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" disabled title="Day 11 par available hoga">
-          Ask AI
-        </Button>
+        <Link to={`/documents/${doc.id}/chat`} aria-disabled={!ready} className={buttonClasses('secondary', !ready ? 'pointer-events-none opacity-50' : '')}>Ask AI</Link>
         <Link to="/dashboard" className={buttonClasses('ghost')}>
           Dashboard
         </Link>

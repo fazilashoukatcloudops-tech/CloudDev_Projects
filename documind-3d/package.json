@@ -11,6 +11,9 @@
     "dev:worker": "npm --prefix apps/api run worker",
     "dev:worker:aws": "npm --prefix apps/api run worker:aws",
     "app:up": "docker compose --profile app up -d --build",
-    "app:down": "docker compose --profile app stop api worker"
+    "app:down": "docker compose --profile app stop api worker",
+    "stack:up": "docker compose up -d --build",
+    "stack:down": "docker compose down",
+    "stack:logs": "docker compose logs -f api worker web"
   }
 }

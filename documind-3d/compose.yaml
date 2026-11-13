@@ -1,31 +1,41 @@
 name: documind
 
-x-app: &app
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+x-node-base: &node-base
   build:
     context: ./apps/api
-  image: documind-api:dev
+  image: documind-api:local
+  init: true
   restart: unless-stopped
-  profiles: ["app"]
-  env_file:
-    - ./apps/api/.env
-  volumes:
-    - uploads:/app/storage/uploads
-  depends_on:
-    db:
-      condition: service_healthy
-    redis:
-      condition: service_healthy
+  logging: *logging
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
 
-x-app-env: &app-env
+x-node-env: &node-env
+  NODE_ENV: production
+  CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+  TRUST_PROXY: ${TRUST_PROXY:-1}
+  JWT_SECRET: ${JWT_SECRET:-}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  DATA_STORE: postgres
   DATABASE_URL: postgresql://${POSTGRES_USER:-documind}:${POSTGRES_PASSWORD:-documind_dev_password}@db:5432/${POSTGRES_DB:-documind}?schema=public
+  QUEUE_DRIVER: bullmq
   REDIS_URL: redis://redis:6379
-  STORAGE_DRIVER: local
+  STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
   UPLOAD_DIR: /app/storage/uploads
+  MODEL_CACHE_DIR: /app/.cache/models
+  EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
+  AWS_REGION: ${AWS_REGION:-}
+  S3_BUCKET: ${S3_BUCKET:-}
 
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-documind}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-documind_dev_password}
@@ -43,6 +53,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *logging
     command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
     ports:
       - "127.0.0.1:6379:6379"
@@ -54,35 +65,87 @@ services:
       timeout: 3s
       retries: 10
 
+  migrate:
+    <<: *node-base
+    restart: "no"
+    command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-documind}:${POSTGRES_PASSWORD:-documind_dev_password}@db:5432/${POSTGRES_DB:-documind}?schema=public
+    depends_on:
+      db: { condition: service_healthy }
+
   api:
-    <<: *app
+    <<: *node-base
     command: ["node", "dist/server.js"]
     environment:
-      <<: *app-env
+      <<: *node-env
       PORT: "4000"
-    ports:
-      - "127.0.0.1:4000:4000"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-claude-haiku-5-5}
+    expose: ["4000"]
+    volumes:
+      - uploads:/app/storage/uploads
+      - models:/app/.cache/models
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    mem_limit: 768m
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
 
   worker:
-    <<: *app
+    <<: *node-base
     command: ["node", "dist/worker/index.js"]
     environment:
-      <<: *app-env
+      <<: *node-env
       WORKER_HEALTH_PORT: "4100"
+      NODE_OPTIONS: --max-old-space-size=768
+    volumes:
+      - uploads:/app/storage/uploads
+      - models:/app/.cache/models
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    mem_limit: 1g
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 20s
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+    image: documind-web:local
+    init: true
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp"]
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:8080"
+    depends_on:
+      api: { condition: service_healthy }
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
 volumes:
   pgdata:
   redisdata:
   uploads:
+  models:

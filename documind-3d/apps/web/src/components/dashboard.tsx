@@ -1,4 +1,4 @@
-﻿import { useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
+import { useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
@@ -242,9 +242,7 @@ export function DocumentDetailsModal({
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" disabled title="Day 11 par available hoga">
-            Ask AI
-          </Button>
+          <Link to={`/documents/${doc.id}/chat`} aria-disabled={doc.status !== 'ready'} className={buttonClasses('secondary', doc.status !== 'ready' ? 'pointer-events-none opacity-50' : '')}>Ask AI</Link>
           <Link to={`/explorer?doc=${doc.id}`} className={buttonClasses('secondary')}>Open in 3D</Link>
         </div>
 

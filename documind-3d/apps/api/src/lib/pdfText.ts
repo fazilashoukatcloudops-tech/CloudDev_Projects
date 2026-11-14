@@ -44,8 +44,9 @@ export async function extractPdfText(data: Buffer, limits: PdfLimits): Promise<E
     throw classify(err) 
   } finally { 
     // FIX: Check if destroy function exists to prevent crash
-    if (pdf && typeof (pdf as any).destroy === 'function') {
-      await (pdf as any).destroy().catch(() => undefined)
+    const pdfWithDestroy = pdf as unknown as { destroy?: () => Promise<void> }
+    if (pdfWithDestroy.destroy && typeof pdfWithDestroy.destroy === 'function') {
+      await pdfWithDestroy.destroy().catch(() => undefined)
     }
   }
 }

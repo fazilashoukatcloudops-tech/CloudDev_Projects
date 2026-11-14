@@ -1,5 +1,5 @@
 import { Queue, type ConnectionOptions } from 'bullmq'
-import { Redis } from 'ioredis'
+import { Redis, type RedisOptions } from 'ioredis'
 import { withTimeout } from '../lib/withTimeout'
 import { JOB_NAME, type DocumentJobData } from './constants'
 import type { DocumentQueue, EnqueueOptions } from './documentQueue'
@@ -42,7 +42,7 @@ export class BullDocumentQueue implements DocumentQueue {
     if (!this.pingClient) {
       // Ping client ke liye offline queue true karein taake connect hote waqt error na de
       const conn = { ...this.cfg.connection, enableOfflineQueue: true, maxRetriesPerRequest: null }
-      this.pingClient = new Redis(conn as any)
+      this.pingClient = new Redis(conn as unknown as RedisOptions)
       this.pingClient.on('error', (err) => console.error('[queue-ping] error:', err.message))
     }
     await withTimeout(this.pingClient.ping(), 2000, 'redis ping')

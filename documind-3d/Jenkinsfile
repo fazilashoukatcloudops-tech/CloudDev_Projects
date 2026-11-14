@@ -32,7 +32,7 @@ pipeline {
             steps {
                 dir('documind-3d') {
                     echo 'Building production Docker images...'
-                    sh 'docker compose build'
+                    sh 'sudo docker compose build'
                 }
             }
         }

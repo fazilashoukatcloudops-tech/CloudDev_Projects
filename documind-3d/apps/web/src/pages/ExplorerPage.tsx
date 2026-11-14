@@ -17,7 +17,7 @@ import type { DocumentItem } from '../types/document'
 
 const DocumentGalaxy = lazy(() => import('../components/three/DocumentGalaxy'))
 const NO_DOCS: DocumentItem[] = []
-const NO_EDGES: any[] = []
+const NO_EDGES: { source: string; target: string; weight: number }[] = []
 
 export default function ExplorerPage() {
   const [params] = useSearchParams()

@@ -38,7 +38,9 @@ export function uploadDocument(
       let body: unknown = null
       try {
         body = JSON.parse(xhr.responseText)
-      } catch {}
+      } catch {
+        // body may not be JSON on network errors
+      }
 
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve((body as { data: DocumentItem }).data)

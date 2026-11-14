@@ -25,6 +25,7 @@ const buttonVariants: Record<ButtonVariant, string> = {
   danger: 'bg-red-500 text-white hover:bg-red-400',
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function buttonClasses(variant: ButtonVariant = 'primary', extra = '') {
   return `${buttonBase} ${buttonVariants[variant]} ${extra}`.trim()
 }

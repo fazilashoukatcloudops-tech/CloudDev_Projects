@@ -14,3 +14,10 @@ Thumbs.db
 # Day 7 - Database & Storage
 apps/api/storage/
 backups/
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+terraform.tfvars

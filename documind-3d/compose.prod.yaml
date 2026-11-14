@@ -1,0 +1,42 @@
+# Production overlay: docker compose -f compose.yaml -f compose.prod.yaml up -d
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+x-prod-env: &prod-env
+  STORAGE_DRIVER: s3
+  AWS_REGION: ${AWS_REGION:?AWS_REGION .env mein set karo}
+  S3_BUCKET: ${S3_BUCKET:?S3_BUCKET .env mein set karo}
+  CORS_ORIGIN: https://${SITE_ADDRESS:?SITE_ADDRESS .env mein set karo}
+  COOKIE_SECURE: "true"
+  TRUST_PROXY: "2" # Caddy + nginx
+
+services:
+  api:
+    environment: *prod-env
+  worker:
+    environment: *prod-env
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?SITE_ADDRESS set karo}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL set karo}
+      ACME_CA: ${ACME_CA:-https://acme-v02.api.letsencrypt.org/directory}
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web: { condition: service_healthy }
+    mem_limit: 128m
+
+volumes:
+  caddy_data:
+  caddy_config:

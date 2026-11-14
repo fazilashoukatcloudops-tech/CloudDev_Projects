@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+
+    environment {
+        // Docker commands ke liye path setup (Windows mein zaroori hota hai)
+        PATH = "/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Code pulled from GitHub successfully.'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                echo 'Installing Node modules for API and Web...'
+                sh 'cd apps/api && npm ci'
+                sh 'cd apps/web && npm ci'
+            }
+        }
+
+        stage('Quality Check (Lint, Typecheck, Tests)') {
+            steps {
+                echo 'Running checks...'
+                // API ke tests
+                sh 'cd apps/api && npm run check'
+                // Web ke tests
+                sh 'cd apps/web && npm run check'
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                echo 'Building production Docker images...'
+                sh 'docker compose build'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '? Pipeline Successful: All tests passed and Docker images built!'
+        }
+        failure {
+            echo '? Pipeline Failed: Check the logs above.'
+        }
+    }
+}

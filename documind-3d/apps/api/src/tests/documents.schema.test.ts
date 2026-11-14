@@ -81,9 +81,9 @@ describe('graph response', () => {
 })
 
 describe('GET /api/v1/documents/graph', () => {
-  it('is planned (501) and not treated as an id', async () => {
+  it('is implemented (200) and not treated as an id', async () => {
     const agent = await authedAgent()
     const res = await agent.get('/api/v1/documents/graph')
-    expect(res.status).toBe(501)
+    expect(res.status).toBe(200)
   })
 })

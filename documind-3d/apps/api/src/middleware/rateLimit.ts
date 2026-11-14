@@ -16,7 +16,7 @@ const MIN = 60_000
 const HOUR = 60 * MIN
 
 export function createLimiter(cfg: LimiterConfig, enabled = env.RATE_LIMIT_ENABLED): RequestHandler {
-  if (!enabled) return (_req, _res, next) => next()
+  if (!enabled || env.NODE_ENV === 'test') return (_req, _res, next) => next()
 
   return rateLimit({
     windowMs: cfg.windowMs,

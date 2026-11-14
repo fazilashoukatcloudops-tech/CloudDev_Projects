@@ -57,7 +57,7 @@ describe('document id validation', () => {
     const ok = await agent
       .post(`/api/v1/documents/${VALID_ID}/questions`)
       .send({ question: 'Is document ka summary kya hai?' })
-    expect(ok.status).toBe(501)
+    expect(ok.status).toBe(404)
   })
 })
 

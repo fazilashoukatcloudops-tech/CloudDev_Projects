@@ -1,5 +1,10 @@
 pipeline {
     agent any
+    options {
+        timeout(time: 60, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '15'))
+    }
+
 
     stages {
         stage('Checkout') {
@@ -12,8 +17,8 @@ pipeline {
             steps {
                 dir('documind-3d') {
                     echo 'Installing Node modules for API and Web...'
-                    sh 'cd apps/api && npm ci'
-                    sh 'cd apps/web && npm ci'
+                    sh 'cd apps/api && npm ci --cache /var/jenkins_home/.npm-cache --prefer-offline'
+                    sh 'cd apps/web && npm ci --cache /var/jenkins_home/.npm-cache --prefer-offline'
                 }
             }
         }

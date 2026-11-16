@@ -33,6 +33,24 @@ pipeline {
             }
         }
 
+        stage('Security') {
+            steps {
+                // npm audit: high/critical -> UNSTABLE (non-blocking)
+                dir('documind-3d') {
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                        sh '''
+                            rc=0
+                            (cd apps/api && npm audit --omit=dev --audit-level=high) || rc=1
+                            (cd apps/web && npm audit --omit=dev --audit-level=high) || rc=1
+                            exit $rc
+                        '''
+                    }
+                }
+                // gitleaks: any secret -> FAILURE (hard stop)
+                sh '/var/jenkins_home/tools/gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1 --no-git'
+            }
+        }
+
         stage('Build Docker Images') {
             steps {
                 dir('documind-3d') {

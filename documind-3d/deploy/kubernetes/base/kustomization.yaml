@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: documind
+resources: [storage.yaml, postgres.yaml, redis.yaml, migrate-job.yaml, api.yaml, worker.yaml, web.yaml]
+configMapGenerator:
+  - name: documind-config
+    literals:
+      - NODE_ENV=production
+      - PORT=4000
+      - TRUST_PROXY=1
+      - DATA_STORE=postgres
+      - QUEUE_DRIVER=bullmq
+      - REDIS_URL=redis://redis:6379
+      - STORAGE_DRIVER=local
+      - UPLOAD_DIR=/app/storage/uploads
+      - MODEL_CACHE_DIR=/app/.cache/models
+      - WORKER_HEALTH_PORT=4100
+      - METRICS_ENABLED=true
+      - APP_VERSION=local
+  - name: web-nginx
+    files: [default.conf=nginx.k8s.conf]

@@ -1,0 +1,14 @@
+﻿openapi: 3.1.0
+info:
+  title: DocuMind 3D API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+paths:
+  /auth/register: { post: { summary: Create account } }
+  /auth/login: { post: { summary: Login } }
+  /auth/logout: { post: { summary: Logout } }
+  /documents: { get: { summary: List }, post: { summary: Upload } }
+  /documents/{id}/questions: { post: { summary: Ask AI } }
+  /health: { get: { summary: Liveness } }
+  /health/ready: { get: { summary: Readiness } }
